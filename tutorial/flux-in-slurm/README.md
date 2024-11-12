@@ -1,0 +1,139 @@
+# Flux Framework in Slurm!
+
+Here is a small tutorial to run Flux in Slurm! Lots of people have heard of Sunk (and other Slurm alternatives that have popped up), but I made a [slurm-operator](https://github.com/converged-computing/slurm-operator) about a year before all of that. We are going to use it here to bring up a slurm cluster.  You'll need to install the jobset API, which eventually will be added to Kubernetes proper (but is not yet!) Create a cluster:
+
+ - [Video on YouTube](https://youtu.be/8ZkSLV0m7To?si=WqWKCe2jvRuTXvlJ)
+
+## 1. Create a Cluster
+
+```bash
+kind create cluster --config ./kind-config.yaml
+```
+
+## 2. Install the Slurm Operator
+
+Install JobSet:
+
+```bash
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/jobset/releases/download/v0.7.0/manifests.yaml
+```
+
+Install the Slurm operator:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/converged-computing/slurm-operator/refs/heads/main/examples/dist/slurm-operator.yaml
+```
+
+See logs for the operator
+
+```bash
+kubectl logs -n slurm-operator-system slurm-operator-controller-manager-6f6945579-9pknp
+```
+
+## 3. Create a Slurm Cluster in Kubernetes
+
+Wait until you see the operator running. Create our demo cluster.
+
+```bash
+kubectl apply -f ./slurm.yaml 
+```
+
+Wait until all of the containers are running:
+
+```bash
+kubectl get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+slurm-sample-d-0-0-45trk    1/1     Running   0          4m27s    # this is the daemon (slurmdbd)
+slurm-sample-db-0-0-6jqkz   1/1     Running   0          4m27s    # this is that maria database
+slurm-sample-s-0-0-xj5zr    1/1     Running   0          4m27s    # this is the login node (slurmctrl)
+slurm-sample-w-0-0-8xtvw    1/1     Running   0          4m27s    # this is worker 0
+slurm-sample-w-0-1-f25rp    1/1     Running   0          4m27s    # this is worker 1
+```
+
+You'll first want to see the database connect successfully:
+
+```bash
+kubectl logs slurm-sample-d-0-0-45trk -f
+```
+```console
+slurmdbd: debug2: StorageType       = accounting_storage/mysql
+slurmdbd: debug2: StorageUser       = slurm
+slurmdbd: debug2: TCPTimeout        = 2
+slurmdbd: debug2: TrackWCKey        = 0
+slurmdbd: debug2: TrackSlurmctldDown= 0
+slurmdbd: debug2: accounting_storage/as_mysql: acct_storage_p_get_connection: acct_storage_p_get_connection: request new connection 1
+slurmdbd: debug2: Attempting to connect to slurm-sample-db-0-0.slurm-svc.slurm-operator.svc.cluster.local:3306
+slurmdbd: slurmdbd version 21.08.6 started
+slurmdbd: debug2: running rollup at Fri Jun 09 04:14:37 2023
+slurmdbd: debug2: accounting_storage/as_mysql: as_mysql_roll_usage: Everything rolled up
+slurmdbd: debug:  REQUEST_PERSIST_INIT: CLUSTER:linux VERSION:9472 UID:0 IP:10.244.0.152 CONN:7
+slurmdbd: debug2: accounting_storage/as_mysql: acct_storage_p_get_connection: acct_storage_p_get_connection: request new connection 1
+slurmdbd: debug2: Attempting to connect to slurm-sample-db-0-0.slurm-svc.slurm-operator.svc.cluster.local:3306
+slurmdbd: debug2: DBD_FINI: CLOSE:0 COMMIT:0
+slurmdbd: debug2: DBD_GET_CLUSTERS: called in CONN 7
+slurmdbd: debug2: DBD_ADD_CLUSTERS: called in CONN 7
+slurmdbd: dropping key time_start_end from table "linux_step_table"
+slurmdbd: debug2: DBD_FINI: CLOSE:0 COMMIT:1
+slurmdbd: debug2: DBD_FINI: CLOSE:1 COMMIT:0
+```
+
+And then watch the login node, which is starting the controller, registering the cluster, and starting again. It normally would happen via a node reboot but we instead run it in a loop (and it seems to work). 
+
+```bash
+kubectl logs -n slurm-operaslurm-sample-s-0-0-xj5zr -f
+```
+```bash
+Hello, I am a server with slurm-sample-s-0-0.slurm-svc.slurm-operator.svc.cluster.local
+Sleeping waiting for database...
+---> Starting the MUNGE Authentication service (munged) ...
+---> Sleeping for slurmdbd to become active before starting slurmctld ...
+---> Starting the Slurm Controller Daemon (slurmctld) ...
+ Adding Cluster(s)
+  Name           = linux
+slurmctld: debug:  slurmctld log levels: stderr=debug2 logfile=debug2 syslog=quiet
+slurmctld: debug:  Log file re-opened
+...
+```
+You'll see a lot of output stream to this log when it's finally running.
+
+```console
+slurmctld: debug2: Spawning RPC agent for msg_type REQUEST_PING
+slurmctld: debug2: Tree head got back 0 looking for 2
+slurmctld: debug2: Tree head got back 1
+slurmctld: debug2: Tree head got back 2
+slurmctld: debug2: node_did_resp slurm-sample-w-0-0.slurm-svc.slurm-operator.svc.cluster.local
+slurmctld: debug2: node_did_resp slurm-sample-w-0-1.slurm-svc.slurm-operator.svc.cluster.local
+slurmctld: debug:  sched/backfill: _attempt_backfill: beginning
+slurmctld: debug:  sched/backfill: _attempt_backfill: no jobs to backfill
+slurmctld: debug2: Testing job time limits and checkpoints
+slurmctld: debug:  sched/backfill: _attempt_backfill: beginning
+slurmctld: debug:  sched/backfill: _attempt_backfill: no jobs to backfill
+slurmctld: debug2: Testing job time limits and checkpoints
+slurmctld: debug2: Performing purge of old job records
+slurmctld: debug:  sched: Running job scheduler for full queue.
+slurmctld: debug2: Testing job time limits and checkpoints
+```
+
+Once you've verified the controller is running, you can shell into the control login node, and run sinfo or try a job:
+
+```bash
+kubectl exec -it slurm-sample-s-0-0-xj5zr bash
+```
+```bash
+sinfo
+```
+```console
+PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+normal*      up 5-00:00:00      2   idle slurm-sample-w-0-0.slurm-svc.slurm-operator.svc.cluster.local,slurm-sample-w-0-1.slurm-svc.slurm-operator.svc.cluster.local
+```
+
+## 4. Deploy Flux!
+
+We probably don't need to ask for an exclusive allocation (we own this entire cluster) but let's pretend we don't. We could do this:
+
+```bash
+salloc -N2 --exclusive
+srun -v --mpi=pmi2 -N2 --pty /opt/conda/bin/flux -v start
+```
+
+And then boum, you're in flux.

@@ -1,0 +1,15 @@
+apiVersion: flux-framework.org/v1alpha1
+kind: Slurm
+metadata:
+  name: slurm-sample
+spec:
+  # One control/login, 5 workers (daemon and database not counted)
+  size: 6
+  node:
+    commands:
+      init: |
+        python3 -m pip install fluxgen
+        fluxgen install
+        ./flux-install.sh
+        export PATH=$PATH:/opt/conda/bin
+        # flux in /opt/conda/bin/flux
