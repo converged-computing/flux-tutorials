@@ -137,3 +137,15 @@ srun -v --mpi=pmi2 -N2 --pty /opt/conda/bin/flux -v start
 ```
 
 And then boum, you're in flux.
+
+## Resources
+
+- [The slurm operator](https://github.com/converged-computing/slurm-operator): to bring up Slurm in Kubernetes
+- [fluxgen](https://github.com/converged-computing/fluxgen): to generate an install script for Flux
+- [Kind](https://kind.sigs.k8s.io/): "Kubernetes in Docker"
+- [JobSet](https://github.com/kubernetes-sigs/jobset) to create groups of related jobs in Kubernetes
+- [Flux Framework](https://flux-framework.org)
+- [Flux on GitHub](https://github.com/flux-framework)
+- [Flux Documentation](https://flux-framework.readthedocs.io)
+
+
