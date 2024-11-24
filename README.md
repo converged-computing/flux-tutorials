@@ -1,10 +1,11 @@
 # Flux Tutorials
 
-> A Dinosaur Tutorial Series!
+> A Dinosaur Tutorial Series! 
 
 ## Tutorials
 
 - [flux-in-slurm](tutorial/flux-in-slurm): Bring up a Flux instance (in user-space) in a Slurm Allocation - both in Kubernetes ([video](https://youtu.be/8ZkSLV0m7To?si=WqWKCe2jvRuTXvlJ)) 
+- [Flux on AWS](tutorial/aws): Deploy an entire Flux Framework cluster to "bare metal" instances on AWS with (essentially) two `make` commands - one to build with packer, and one to deploy with Terraform.
 - [HPCIC Tutorial 2024](https://youtu.be/Dt4CSZWSEJE?si=b2O7lQrJixcKh-EJ)
 
 ## What is this?

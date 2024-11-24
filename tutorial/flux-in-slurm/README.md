@@ -147,5 +147,3 @@ And then boum, you're in flux.
 - [Flux Framework](https://flux-framework.org)
 - [Flux on GitHub](https://github.com/flux-framework)
 - [Flux Documentation](https://flux-framework.readthedocs.io)
-
-
