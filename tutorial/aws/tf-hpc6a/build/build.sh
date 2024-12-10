@@ -4,7 +4,7 @@ set -euo pipefail
 
 ################################################################
 #
-# Flux, Singularity, and EFA
+# Flux, Singularity, and ORAS
 #
 
 /usr/bin/cloud-init status --wait
