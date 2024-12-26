@@ -15,6 +15,6 @@ validate:
 	
 .PHONY: build
 build: 
-	# Rocky-8-EC2-Base-8.7-20230215.0.x86_64-d6577ceb-8ea8-4e0e-84c6-f098fc302e82
-	packer build -var machine_architecture="x86-64" -var project_id=${GOOGLE_PROJECT} build.pkr.hcl
-	# gcloud builds submit --config=cloudbuild.yaml .
+	# On error, the best strategy I've found is to ssh in, figure out what isn't there
+	# (where it failed) and debug
+	packer build --on-error=ask flux-build.pkr.hcl
