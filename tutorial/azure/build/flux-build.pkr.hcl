@@ -18,24 +18,28 @@ variable client_secret {
 
 variable subscription_id {
   type    = string
-  default = null
+  default = env("AZURE_SUBSCRIPTION_ID")
 }
 
 variable tenant_id {
   type    = string
-  default = null
+  default = env("AZURE_TENANT_ID")
 }
 
 variable "image_resource_group_name" {
   description = "Name of the resource group in which the Packer image will be created"
-  default     = "myPackerImages"
+  default = env("AZURE_RESOURCE_GROUP_NAME")
 }
 
 # az vm image list --publisher microsoft-dsvm --offer ubuntu-hpc --output table --all
 # x64             ubuntu-hpc  microsoft-dsvm  2204-preview-ndv5  microsoft-dsvm:ubuntu-hpc:2204-preview-ndv5:22.04.2023080201  22.04.2023080201
 source "azure-arm" "builder" {
-  client_id                         = var.client_id
-  client_secret                     = var.client_secret
+
+  # Uncomment if you aren't using managed identity (in cloud shell)
+  # client_id                         = var.client_id
+  # client_secret                     = var.client_secret
+  # And comment this line (or set to false)
+  use_azure_cli_auth                = true
   image_offer                       = "ubuntu-hpc"
   image_publisher                   = "microsoft-dsvm"
   image_sku                         = "2204-preview-ndv5"
@@ -45,7 +49,10 @@ source "azure-arm" "builder" {
   os_type                           = "Linux"
   subscription_id                   = var.subscription_id
   tenant_id                         = var.tenant_id
-  vm_size                           = "Standard_DS2_v2"
+  # If you aren't sure about size, put something wrong :)
+  # You will need to have quota for this family, and the location
+  vm_size                           = "Standard_HB120-96rs_v3"
+  ssh_username                      = "azureuser"
   azure_tags = {
     "flux" : "0.68.0",
   }

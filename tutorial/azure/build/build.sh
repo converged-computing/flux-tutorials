@@ -154,7 +154,10 @@ sudo mkdir -p /var/run/munge && \
     sudo chmod 600 /etc/munge/munge.key
 
 # Make the flux run directory
-mkdir -p /home/azureuser/run/flux
+ls /home
+whoami
+sudo mkdir -p /home/azureuser/run/flux
+sudo chown azureuser /home/azureuser
 
 # Flux core
 wget https://github.com/flux-framework/flux-core/releases/download/v0.68.0/flux-core-0.68.0.tar.gz && \
@@ -203,8 +206,6 @@ flux keygen /tmp/curve.cert && \
     sudo rm -rf /opt/flux
 
 # Install Singularity
-cd /opt
-
 # flux start mpirun -n 6 singularity exec singularity-mpi_mpich.sif /opt/mpitest
 sudo apt-get update && sudo apt-get install -y libseccomp-dev libglib2.0-dev cryptsetup \
    libfuse-dev \
@@ -232,6 +233,7 @@ sudo apt-get install -y \
    zlib1g-dev
 
 # install go
+cd /tmp
 wget https://go.dev/dl/go1.21.0.linux-${ORAS_ARCH}.tar.gz
 tar -xvf go1.21.0.linux-${ORAS_ARCH}.tar.gz
 sudo mv go /usr/local && rm go1.21.0.linux-${ORAS_ARCH}.tar.gz
