@@ -104,15 +104,6 @@ resource "azurerm_subnet" "vmss" {
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-resource "azurerm_public_ip" "vmss" {
-  name                = "vmss-public-ip"
-  location            = local.location
-  resource_group_name = azurerm_resource_group.vmss.name
-  allocation_method   = "Static"
-  domain_name_label   = random_string.fqdn.result
-  tags                = local.tags
-}
-
 resource "azurerm_lb" "vmss" {
   name                = "vmss-lb"
   location            = local.location
@@ -120,7 +111,7 @@ resource "azurerm_lb" "vmss" {
 
   frontend_ip_configuration {
     name                 = "PublicIPAddress"
-    public_ip_address_id = azurerm_public_ip.vmss.id
+    public_ip_address_id = azurerm_public_ip.flux.id
   }
   tags = local.tags
 }
