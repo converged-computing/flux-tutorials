@@ -2,7 +2,7 @@
 
 # Assume a huge number. This will error with Azure because they 
 # eventually dive into alpha numeric, but this works for a small demo
-NODELIST=${template_name}000[000-999],${template_name}0000[10-99],${template_name}000[100-099]
+NODELIST=${template_name}000[000-999]
 lead_broker=${template_name}000000
 
 flux R encode --hosts=$NODELIST --local > R

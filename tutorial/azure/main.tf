@@ -104,40 +104,6 @@ resource "azurerm_subnet" "vmss" {
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-resource "azurerm_lb" "vmss" {
-  name                = "vmss-lb"
-  location            = local.location
-  resource_group_name = azurerm_resource_group.vmss.name
-
-  frontend_ip_configuration {
-    name                 = "PublicIPAddress"
-    public_ip_address_id = azurerm_public_ip.flux.id
-  }
-  tags = local.tags
-}
-
-resource "azurerm_lb_backend_address_pool" "bpepool" {
-  loadbalancer_id = azurerm_lb.vmss.id
-  name            = "BackEndAddressPool"
-}
-
-resource "azurerm_lb_probe" "vmss" {
-  loadbalancer_id = azurerm_lb.vmss.id
-  name            = "ssh-running-probe"
-  port            = local.application_port
-}
-
-resource "azurerm_lb_rule" "lbnatrule" {
-  loadbalancer_id                = azurerm_lb.vmss.id
-  name                           = "http"
-  protocol                       = "Tcp"
-  frontend_port                  = local.application_port
-  backend_port                   = local.application_port
-  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.bpepool.id]
-  frontend_ip_configuration_name = "PublicIPAddress"
-  probe_id                       = azurerm_lb_probe.vmss.id
-}
-
 data "azurerm_resource_group" "image" {
   name = local.vm_image_resource_group
 }
@@ -214,7 +180,6 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
       name      = "ipConfiguration1"
       primary   = true
       subnet_id = azurerm_subnet.vmss.id
-      # load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.bpepool.id]
       public_ip_address {
         name = "publicIpAddress1"
       }

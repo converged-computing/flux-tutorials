@@ -27,9 +27,15 @@ and then:
 make
 ```
 
+The shell can be buggy - if it seems like it's hanging, it's that terraform is waiting for you to enter "yes." You can type it (despite not seeing it) and press enter and it works every time... 50% of the time. :) I added a command to the Makefile to get around this:
+
+```bash
+make apply-approved
+```
+
 You can also run each command separately:
 
-```
+```bash
 # Terraform init
 make init
 
@@ -51,7 +57,7 @@ terraform output -json private_key | jq -r > id_azure
 chmod 600 id_azure*
 ```
 
-Then get the flux-0* instance id from the console, and ssh in!
+Then get the instance ip addresses from the command line (or portal), and ssh in!
 
 ```bash
 ip_address=$(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[0].ipAddress)
@@ -64,7 +70,6 @@ To get a difference instance, just use the index (e.g., index 1 is the second in
 follower_address=$(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[1].ipAddress)
 ssh -i ./id_azure azureuser@${follower_address}
 ```
-
 
 ### 3. Checks
 
