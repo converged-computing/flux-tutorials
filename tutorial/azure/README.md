@@ -8,7 +8,13 @@ Note that you should [build](build) the images first. Follow the instructions in
 
 ### 2. Deploy Terraform
 
-Check the [start-script.sh](start-script.sh) and variables at the top of [main.tf](main.tf) and then:
+Check the [start-script.sh](start-script.sh) and variables at the top of [main.tf](main.tf). You'll need to export the image full identifier to the environment:
+
+```bash
+export TF_VAR_vm_image_storage_reference=/subscriptions/xxxxxxx/resourceGroups/xxxxx/providers/Microsoft.Compute/disks/xxxx
+```
+
+and then:
 
 ```bash
 make

@@ -33,23 +33,30 @@ provider "azurerm" {
   }
 }
 
+# Export to environment:
+# export TF_VAR_vm_image_storage_reference="/subscriptions/xxxxxxx/resourceGroups/xxxxx/providers/Microsoft.Compute/disks/xxxx"
+# e.g., "/subscriptions/xxxxxxx/resourceGroups/xxxxx/providers/Microsoft.Compute/disks/xxxx"
+variable "vm_image_storage_reference" {
+  type = string
+}
+
 locals {
-  admin_user     = "azureuser"
+  admin_user = "azureuser"
   # How many VMs in the VM Scale set
   size         = 2
   name         = "flux"
   disk_size_gb = 100
-  # TODO does it work if these are different (move across groups)
-  # Where we want to create the VM scale set
-  resource_group_name = "packer-testing"
+
+  # This will be newly created
+  resource_group_name = "terraform-testing"
 
   # Custom Build variables (the packer build)
-  vm_image_name = "flux-framework"
-  # e.g., "/subscriptions/xxxxxxx/resourceGroups/xxxxx/providers/Microsoft.Compute/disks/xxxx"
-  # vm_image_storage_reference = env("AZURE_VM_IMAGE_STORAGE_REFERENCE")
+  vm_image_name           = "flux-framework"
   vm_image_resource_group = "packer-testing"
-  vm_image_size           = "Standard_HB120-96rs_v3"
-  location                = "southcentralus"
+
+  # This is also called the SKU
+  vm_image_size = "Standard_HB120-96rs_v3"
+  location      = "southcentralus"
   tags = {
     flux_core = "0-68-0"
   }
@@ -153,71 +160,58 @@ resource "azapi_resource_action" "ssh_public_key_gen" {
   response_export_values = ["publicKey", "privateKey"]
 }
 
-resource "random_password" "password" {
-  count  = 0
-  length = 20
-}
-
-resource "azurerm_virtual_machine_scale_set" "vmss" {
-  name                = "vmscaleset"
-  location            = local.location
+resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
+  # compute_name_prefix defaults to this
+  # Important for startup with flux
+  name                = local.name
   resource_group_name = azurerm_resource_group.vmss.name
-  upgrade_policy_mode = "Manual"
-  custom_data         = file("start_script.sh")
+  location            = azurerm_resource_group.vmss.location
+  sku                 = local.vm_image_size
+  instances           = local.size
+  custom_data         = base64encode(file("start-script.sh"))
 
-  sku {
-    name     = "Standard_HB120-96rs_v3"
-    tier     = "Standard"
-    capacity = local.size
-  }
+  # We want this to be ssh key
+  admin_username                  = local.admin_user
+  admin_password                  = null
+  disable_password_authentication = true
+  # This is the default, but I want to put it explicitly
+  upgrade_mode = "Manual"
 
-  storage_profile_image_reference {
-    id = data.azurerm_image.image.id
-  }
+  # This is a standalone image (not a gallery image)
+  # "/subscriptions/***/resourceGroups/test/providers/Microsoft.Compute/images/image-0"
+  source_image_id = var.vm_image_storage_reference
 
-  # storage_image_reference {
-  #    id = local.vm_image_storage_reference
-  #  }
-
-  storage_profile_os_disk {
-    name              = "flux-framework"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-    # disk_size_gb      = 75
-  }
-
-  storage_profile_data_disk {
+  data_disk {
     # Logical unit of the disk in the scale set
-    lun           = 0
-    caching       = "ReadWrite"
-    create_option = "Empty"
-    disk_size_gb  = local.disk_size_gb
+    lun                  = 0
+    caching              = "ReadWrite"
+    create_option        = "Empty"
+    storage_account_type = "Standard_LRS"
+    disk_size_gb         = local.disk_size_gb
   }
 
-  os_profile {
-    computer_name_prefix = "vmlab"
-    admin_username       = local.admin_user
-    admin_password       = null
+  os_disk {
+    storage_account_type = "Standard_LRS"
+    caching              = "ReadWrite"
   }
 
-  os_profile_linux_config {
-    disable_password_authentication = true
-
-    ssh_keys {
-      path     = "/home/azureuser/.ssh/authorized_keys"
-      key_data = azapi_resource_action.ssh_public_key_gen.output.publicKey
-    }
+  admin_ssh_key {
+    username   = local.admin_user
+    public_key = azapi_resource_action.ssh_public_key_gen.output.publicKey
   }
 
-  network_profile {
-    name    = "terraformnetworkprofile"
+  network_interface {
+    name    = local.name
     primary = true
 
     ip_configuration {
-      name                                   = "IPConfiguration"
-      subnet_id                              = azurerm_subnet.vmss.id
-      load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.bpepool.id]
-      primary                                = true
+      name      = "ipConfiguration1"
+      primary   = true
+      subnet_id = azurerm_subnet.vmss.id
+      # load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.bpepool.id]
+      public_ip_address {
+        name = "publicIpAddress1"
+      }
     }
   }
   tags = local.tags
@@ -245,46 +239,3 @@ resource "azurerm_network_interface" "flux" {
   }
   tags = local.tags
 }
-
-#resource "azurerm_virtual_machine" "flux" {
-#  name                  = local.vm_image_name
-#  location              = local.location
-#  resource_group_name   = azurerm_resource_group.vmss.name
-#  network_interface_ids = [azurerm_network_interface.flux.id]
-#  vm_size               = local.vm_image_size
-
-#  storage_image_reference {
-#    publisher = "Canonical"
-#    offer     = "UbuntuServer"
-#    sku       = "16.04-LTS"
-#    version   = "latest"
-#  }
-
-#  storage_os_disk {
-#    name              = "${local.name}-osdisk"
-#    caching           = "ReadWrite"
-#    create_option     = "FromImage"
-#    managed_disk_type = "Standard_LRS"
-#  }
-
-# storage_image_reference {
-#    id = local.vm_image_storage_reference
-#  }
-
-#  os_profile {
-#    computer_name  = local.name
-#    admin_username = var.admin_user
-#    admin_password = local.admin_password
-#  }
-
-#  os_profile_linux_config {
-#    disable_password_authentication = true
-
-#    ssh_keys {
-#      path     = "/home/azureuser/.ssh/authorized_keys"
-#      key_data = azapi_resource_action.ssh_public_key_gen.output.publicKey
-#    }
-#  }
-
-#  tags = local.tags
-#}
