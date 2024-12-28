@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# We need the azure client - the instance names aren't predictable
-# az vmss run-command --resource-group <resource-group-name> --name <vmss-name> --command "bash -s" --script-path "update_brokers.sh"
-
 template_name=${1}
 lead_broker=${2}
 template_username=${3:-azureuser}

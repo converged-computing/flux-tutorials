@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# We need the azure client - the instance names aren't predictable
+# In case the user wants to play with this.
 sudo pip install azure-cli
 
 # Assume a huge number. This will error with Azure because they 
