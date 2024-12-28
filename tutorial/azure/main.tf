@@ -71,7 +71,6 @@ locals {
   tags = {
     flux_core = "0-68-0"
   }
-  application_port = 8081
 }
 
 resource "random_pet" "id" {}
@@ -165,6 +164,10 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   os_disk {
     storage_account_type = "Standard_LRS"
     caching              = "ReadWrite"
+  }
+
+  identity {
+    type = "SystemAssigned"
   }
 
   admin_ssh_key {
