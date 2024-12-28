@@ -71,15 +71,81 @@ follower_address=$(az vmss list-instance-public-ips -g terraform-testing -n flux
 ssh -i ./id_azure azureuser@${follower_address}
 ```
 
+Note that if the lead broker doesn't come up as flux_0 (flux with all zeros, Azure is not predicable like that) we will need to update.
+
+```bash
+lead_broker=$(az vmss list-instances -g terraform-testing -n flux | jq -r .[0].osProfile.computerName)
+echo "The lead broker is ${lead_broker}"
+```
+
+Here is how you can fix all your brokers:
+
+```bash
+for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
+ do
+   echo "Updating $address"
+   scp -i ./id_azure update_brokers.sh azureuser@${address}:/tmp/update_brokers.sh
+   ssh -i ./id_azure azureuser@$address "/bin/bash /tmp/update_brokers.sh flux $lead_broker"
+done
+```
+
+Note that I've also provided a script to install the OSU benchmarks with the same strategy above:
+
+```bash
+for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
+ do
+   echo "Updating $address"
+   scp -i ./id_azure install_osu.sh azureuser@${address}:/tmp/install_osu.sh
+   ssh -i ./id_azure azureuser@$address "/bin/bash /tmp/install_osu.sh"
+done
+```
+
+This installs to /usr/local/libexec/osu-benchmarks/mpi.
+
 ### 3. Checks
 
 Check the cluster status, the overlay status, and try running a job:
 
 ```bash
-$ flux resource list
+flux resource list
 ```
 ```bash
-$ flux run -N 2 hostname
+flux run -N 2 hostname
+```
+
+Try running a benchmark!
+
+```bash
+flux run -N2 /usr/local/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce 
+flux run -N2 -n2 /usr/local/libexec/osu-micro-benchmarks/mpi/pt2pt/osu_latency
+```
+```console
+# OSU MPI Latency Test v5.8
+# Size          Latency (us)
+0                       1.57
+1                       1.56
+2                       1.56
+4                       1.56
+8                       1.57
+16                      1.57
+32                      1.70
+64                      1.76
+128                     1.80
+256                     2.31
+512                     2.36
+1024                    2.52
+2048                    2.70
+4096                    3.46
+8192                    3.96
+16384                   5.24
+32768                   6.85
+65536                   9.18
+131072                 14.20
+262144                 17.30
+524288                 27.94
+1048576                50.00
+2097152                92.04
+4194304               177.34
 ```
 
 ### 4. Cleanup

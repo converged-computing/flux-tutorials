@@ -1,8 +1,13 @@
 #!/bin/bash
 
+# In case the user wants to play with this.
+sudo pip install azure-cli
+
 # Assume a huge number. This will error with Azure because they 
 # eventually dive into alpha numeric, but this works for a small demo
 NODELIST=${template_name}000[000-999]
+
+# The lead broker can be anything, azure is not predictable
 lead_broker=${template_name}000000
 
 flux R encode --hosts=$NODELIST --local > R
