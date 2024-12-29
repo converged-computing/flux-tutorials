@@ -1,5 +1,5 @@
 .PHONY: all
-all: init fmt validate apply
+all: apply
 
 .PHONY: init
 init: 
@@ -14,11 +14,11 @@ validate:
 	terraform validate
 	
 .PHONY: apply
-apply: 
+apply: init fmt validate
 	terraform apply
 
 .PHONY: apply-approved
-apply-approved: 
+apply-approved: init fmt validate
 	terraform apply --auto-approve
 
 .PHONY: destroy
