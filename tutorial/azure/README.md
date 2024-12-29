@@ -840,6 +840,10 @@ This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ```
 
+### Docker
+
+For advanced users, we have a [docker](docker) directory with builds that emulate the base set of VMs that are intended to be used with them. It would be good if Microsoft wanted to provide more production bases for us :)
+
 ### Debugging
 
 Depending on your environment, terraform (e.g., `make` or `make destroy` doesn't always work. I get this error from the Azure Cloud Shell:
