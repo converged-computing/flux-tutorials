@@ -78,6 +78,15 @@ lead_broker=$(az vmss list-instances -g terraform-testing -n flux | jq -r .[0].o
 echo "The lead broker is ${lead_broker}"
 ```
 
+#### Scripts
+
+For any of the scripts below, you can run in parallel as follows:
+
+```bash
+pip install parallel-ssh
+pssh -h hosts.txt -i "command"
+```
+
 Here is how you can fix all your brokers:
 
 ```bash
@@ -100,7 +109,18 @@ for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux |
 done
 ```
 
-This installs to /usr/local/libexec/osu-benchmarks/mpi.
+This installs to /usr/local/libexec/osu-benchmarks/mpi. And lammps:
+
+```bash
+for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
+ do
+   echo "Updating $address"
+   scp -i ./id_azure install_lammps.sh azureuser@${address}:/tmp/install_lammps.sh
+   ssh -i ./id_azure azureuser@$address "/bin/bash /tmp/install_lammps.sh"
+done
+```
+
+
 
 ### 3. Checks
 
@@ -113,7 +133,11 @@ flux resource list
 flux run -N 2 hostname
 ```
 
+### 4. Benchmarks
+
 Try running a benchmark!
+
+#### OSU
 
 ```bash
 flux run -N2 /usr/local/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce 
@@ -147,6 +171,8 @@ flux run -N2 -n2 /usr/local/libexec/osu-micro-benchmarks/mpi/pt2pt/osu_latency
 2097152                92.04
 4194304               177.34
 ```
+
+#### LAMMPS
 
 ### 4. Cleanup
 
