@@ -11,4 +11,4 @@ git checkout FETCH_HEAD
 mkdir build
 cd build
 cmake ../cmake -D PKG_REAXFF=yes -D BUILD_MPI=yes -D PKG_OPT=yes -D FFT=FFTW3 -D CMAKE_INSTALL_PREFIX=/usr
-make && sudo make install
+make -j && sudo make install
