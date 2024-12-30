@@ -94,6 +94,9 @@ RUN . ./set_properties.sh && \
 RUN . ./set_properties.sh && \
     /bin/bash $UBUNTU_COMMON_DIR/install_mpis.sh
 
+# This would match the VM exactly (you'd ned to change the source script, etc).
+# RUN mv /opt/hpcx-v2.19-gcc-mlnx_ofed-ubuntu22.04-cuda12-x86_64 /opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/
+
 # cleanup downloaded tarballs - clear some space
 RUN rm -rf *.tgz *.bz2 *.tbz *.tar.gz *.run *.deb *_offline.sh && \
     rm -rf /tmp/MLNX_OFED_LINUX* /tmp/*conf* && \

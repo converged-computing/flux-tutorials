@@ -1,5 +1,8 @@
 #!/bin/bash
 
+. /opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/hpcx-mt-init.sh
+hpcx_load
+
 # This is the exact version we used in our performance study
 cd /tmp
 mkdir lammps

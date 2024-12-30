@@ -124,10 +124,10 @@ for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux |
    echo "Updating $address"
    scp -i ./id_azure ./install/${script} azureuser@${address}:/tmp/${script}
 done
-pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/${script} flux $lead_broker"
+pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/${script}"
 ```
 
-This installs to `/usr/local/libexec/osu-benchmarks/mpi`. And lammps installs to `/usr/bin/lmp`
+This installs to `/usr/local/libexec/osu-micro-benchmarks/mpi`. And lammps installs to `/usr/bin/lmp`
 
 ### 3. Checks
 
