@@ -118,7 +118,7 @@ script=install_usernetes.sh
 
 And then install!
 
-```
+```console
 for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
  do
    echo "Updating $address"
