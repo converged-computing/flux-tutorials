@@ -140,7 +140,7 @@ flux resource list
 flux run -N 2 hostname
 ```
 
-### 4. Benchmarks
+### 4. Applications and Benchmarks
 
 Try running a benchmark!
 
@@ -275,6 +275,10 @@ Total wall time: 0:00:37
 ```
 
 </details>
+
+#### Usernetes
+
+See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for instructions for deployment using the scripts here.
 
 ### 4. Cleanup
 
