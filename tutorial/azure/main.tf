@@ -152,18 +152,22 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   # "/subscriptions/***/resourceGroups/test/providers/Microsoft.Compute/images/image-0"
   source_image_id = var.vm_image_storage_reference
 
-  data_disk {
-    # Logical unit of the disk in the scale set
-    lun                  = 0
-    caching              = "ReadWrite"
-    create_option        = "Empty"
-    storage_account_type = "Standard_LRS"
-    disk_size_gb         = local.disk_size_gb
-  }
+  # To use this, you need to add:
+  # resource "azurerm_virtual_machine_data_disk_attachment" "example"
+  # see https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_data_disk_attachment
+  # data_disk {
+  # Logical unit of the disk in the scale set
+  # lun                  = 0
+  # caching              = "ReadWrite"
+  # create_option        = "Empty"
+  # storage_account_type = "Standard_LRS"
+  # disk_size_gb         = local.disk_size_gb
+  # }
 
   os_disk {
     storage_account_type = "Standard_LRS"
     caching              = "ReadWrite"
+    disk_size_gb         = local.disk_size_gb
   }
 
   identity {
