@@ -107,29 +107,27 @@ done
 pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/update_brokers.sh flux $lead_broker"
 ```
 
-Note that I've also provided a script to install the OSU benchmarks with the same strategy above:
+Note that I've also provided scripts to install the OSU benchmarks and lammps with the same strategy above:
 
 ```bash
+# Choose the script you want to install
+script=install_osu.sh
+script=install_lammps.sh
+script=install_usernetes.sh
+```
+
+And then install!
+
+```
 for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
  do
    echo "Updating $address"
-   scp -i ./id_azure install_osu.sh azureuser@${address}:/tmp/install_osu.sh
+   scp -i ./id_azure ./install/${script} azureuser@${address}:/tmp/${script}
 done
-pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/install_osu.sh flux $lead_broker"
+pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/${script} flux $lead_broker"
 ```
 
-This installs to `/usr/local/libexec/osu-benchmarks/mpi`. And lammps:
-
-```bash
-for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
- do
-   echo "Updating $address"
-   scp -i ./id_azure install_lammps.sh azureuser@${address}:/tmp/install_lammps.sh
-done
-pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/install_lammps.sh flux $lead_broker"
-```
-That installs to `/usr/bin/lmp`
-
+This installs to `/usr/local/libexec/osu-benchmarks/mpi`. And lammps installs to `/usr/bin/lmp`
 
 ### 3. Checks
 
