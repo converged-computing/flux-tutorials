@@ -14,12 +14,16 @@ docker push ghcr.io/converged-computing/flux-tutorials:azurehpc-2204
 
 ## OSU
 
-*Coming soon*
-
 ```bash
 cd ./osu
 docker build -t ghcr.io/converged-computing/flux-tutorials:azurehpc-2204-osu .
 docker push ghcr.io/converged-computing/metric-osu-cpu:azure-hpc-osu
 ```
 
+## LAMMPS
 
+```bash
+cd ./lammps-reax
+docker build -t ghcr.io/converged-computing/flux-tutorials:azurehpc-2204-lammps-reax .
+docker push ghcr.io/converged-computing/metric-osu-cpu:azure-hpc-lammps-reax
+```
