@@ -113,7 +113,6 @@ Note that I've also provided scripts to install the OSU benchmarks and lammps wi
 # Choose the script you want to install
 script=install_osu.sh
 script=install_lammps.sh
-script=install_usernetes.sh
 ```
 
 And then install!
@@ -278,7 +277,7 @@ Total wall time: 0:00:37
 
 #### Usernetes
 
-See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for instructions for deployment using the scripts here.
+See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for build and deploy instructions for deployment of user space kubernetes.
 
 ### 4. Cleanup
 
