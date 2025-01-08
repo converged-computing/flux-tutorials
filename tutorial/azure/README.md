@@ -107,29 +107,26 @@ done
 pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/update_brokers.sh flux $lead_broker"
 ```
 
-Note that I've also provided a script to install the OSU benchmarks with the same strategy above:
+Note that I've also provided scripts to install the OSU benchmarks and lammps with the same strategy above:
 
 ```bash
+# Choose the script you want to install
+script=install_osu.sh
+script=install_lammps.sh
+```
+
+And then install!
+
+```console
 for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
  do
    echo "Updating $address"
-   scp -i ./id_azure install_osu.sh azureuser@${address}:/tmp/install_osu.sh
+   scp -i ./id_azure ./install/${script} azureuser@${address}:/tmp/${script}
 done
-pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/install_osu.sh flux $lead_broker"
+pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/${script}"
 ```
 
-This installs to `/usr/local/libexec/osu-benchmarks/mpi`. And lammps:
-
-```bash
-for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
- do
-   echo "Updating $address"
-   scp -i ./id_azure install_lammps.sh azureuser@${address}:/tmp/install_lammps.sh
-done
-pssh -h hosts.txt -x "-i ./id_azure" "/bin/bash /tmp/install_lammps.sh flux $lead_broker"
-```
-That installs to `/usr/bin/lmp`
-
+This installs to `/usr/local/libexec/osu-micro-benchmarks/mpi`. And lammps installs to `/usr/bin/lmp`
 
 ### 3. Checks
 
@@ -142,7 +139,7 @@ flux resource list
 flux run -N 2 hostname
 ```
 
-### 4. Benchmarks
+### 4. Applications and Benchmarks
 
 Try running a benchmark!
 
@@ -277,6 +274,10 @@ Total wall time: 0:00:37
 ```
 
 </details>
+
+#### Usernetes
+
+See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for build and deploy instructions for deployment of user space kubernetes.
 
 ### 4. Cleanup
 
@@ -839,6 +840,10 @@ Copyright (C) 2021 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ```
+
+### Docker
+
+For advanced users, we have a [docker](docker) directory with builds that emulate the base set of VMs that are intended to be used with them. It would be good if Microsoft wanted to provide more production bases for us :)
 
 ### Debugging
 
