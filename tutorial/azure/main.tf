@@ -55,7 +55,7 @@ locals {
   # How many VMs in the VM Scale set
   size            = 2
   name            = "flux"
-  disk_size_gb    = 100
+  disk_size_gb    = 128
   ethernet_device = "eth0"
 
   # This will be newly created

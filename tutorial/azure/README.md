@@ -4,14 +4,14 @@
 
 ### 1. Build Images
 
-Note that you should [build](build) the images first. Follow the instructions in the README there.
+Note that you should build the images first via [build](build). We provide a simple, reproducible build for ubuntu 24.04 with Singularity, Flux, ORAS, and updated drivers. We also provide that same logic in Docker containers built alongside this repository and from [docker](docker).
 
 ### 2. Deploy Terraform
 
 You'll first need to export the image full identifier to the environment:
 
 ```bash
-export TF_VAR_vm_image_storage_reference=/subscriptions/xxxxxxx/resourceGroups/xxxxx/providers/Microsoft.Compute/images/flux-framework
+export TF_VAR_vm_image_storage_reference=/subscriptions/3e173a37-8f81-492f-a234-ca727b72e6f8/resourceGroups/packer-testing/providers/Microsoft.Compute/images/flux-framework-2404
 ```
 Note that I needed to clone this and do from the cloud shell in the Azure portal.
 
@@ -92,7 +92,7 @@ export PATH=/tmp/pssh/bin:$PATH
 
 #### Scripts
 
-Here is how you can fix all your brokers:
+Here is how you can fix all your brokers (this is only necessary if the lead broker `ip_address` is not flux000000:
 
 ```bash
 for address in $(az vmss list-instance-public-ips -g terraform-testing -n flux | jq -r .[].ipAddress)
@@ -143,46 +143,62 @@ flux run -N 2 hostname
 
 Try running a benchmark!
 
+#### Environment
+
+You can export these once and they will be passed into Flux and Singularity containers.
+We don't build them into the images so you are aware of them and can make an informed choice (change them, etc.)
+
+```bash
+export OMPI_MCA_btl_openib_warn_no_device_params_found=0
+export OMPI_MCA_btl_vader_single_copy_mechanism=none
+export OMPI_MCA_btl_openib_allow_ib=1
+export UCX_TLS=ib,shm
+# You can also do TLS=all
+export UCX_NET_DEVICES=mlx5_0:1
+```
+
 #### OSU
 
 ```bash
-flux run -N2 /usr/local/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce 
-flux run -N2 -n2 /usr/local/libexec/osu-micro-benchmarks/mpi/pt2pt/osu_latency
+flux run -N2 -n 2 -o cpu-affinity=per-task /usr/local/libexec/osu-micro-benchmarks/mpi/pt2pt/osu_latency
+flux run -N2 -n 192 /usr/local/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce 
 ```
 ```console
 # OSU MPI Latency Test v5.8
 # Size          Latency (us)
-0                       1.57
-1                       1.56
-2                       1.56
-4                       1.56
-8                       1.57
-16                      1.57
-32                      1.70
-64                      1.76
-128                     1.80
-256                     2.31
-512                     2.36
-1024                    2.52
-2048                    2.70
-4096                    3.46
-8192                    3.96
-16384                   5.24
-32768                   6.85
-65536                   9.18
-131072                 14.20
-262144                 17.30
-524288                 27.94
-1048576                50.00
-2097152                92.04
-4194304               177.34
+0                       1.61
+1                       1.60
+2                       1.60
+4                       1.61
+8                       1.61
+16                      1.61
+32                      1.75
+64                      1.80
+128                     1.84
+256                     2.35
+512                     2.44
+1024                    2.59
+2048                    2.77
+4096                    3.52
+8192                    4.04
+16384                   5.34
+32768                   6.77
+65536                   9.24
+131072                 13.89
+262144                 17.26
+524288                 27.93
+1048576                49.90
+2097152                91.88
+4194304               177.12
 ```
 
 #### LAMMPS
 
 You can decrease the problem size for a faster run (x,y,z parameters).
+
 ```bash
 cd /tmp/lammps/examples/reaxff/HNS
+# 8x16x16 is about 37 seconds, 16^3 is ~1:07
 flux run -N2 -n 192 -o cpu-affinity=per-task lmp -v x 8 -v y 16 -v z 16 -in in.reaxff.hns -nocite
 ```
 
@@ -275,9 +291,26 @@ Total wall time: 0:00:37
 
 </details>
 
+#### Singularity
+
+You can pull Singularity containers to run the same tests, but in containers.
+
+```bash
+flux exec --rank 0-1 singularity pull docker://ghcr.io/converged-computing/flux-tutorials:azure-2404-lammps-reax
+flux exec --rank 0-1 singularity pull docker://ghcr.io/converged-computing/flux-tutorials:azure-2404-osu
+```
+```bash
+# OSU Benchmarks
+flux run -N2 -n 192 -o cpu-affinity=per-task singularity exec --bind /opt/run/flux ./flux-tutorials_azure-2404-osu.sif /opt/osu-benchmark/build.openmpi/mpi/collective/osu_allreduce
+flux run -N2 -n 2 -o cpu-affinity=per-task singularity exec --bind /opt/run/flux ./flux-tutorials_azure-2404-osu.sif /opt/osu-benchmark/build.openmpi/mpi/pt2pt/osu_latency
+
+# LAMMPS (1:06 to 1:07)
+flux run -o cpu-affinity=per-task -N2 -n 192 singularity exec --bind /opt/run/flux ./flux-tutorials_azure-2404-lammps-reax.sif /usr/bin/lmp -v x 16 -v y 16 -v z 16 -in in.reaxff.hns -nocite
+```
+
 #### Usernetes
 
-See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for build and deploy instructions for deployment of user space kubernetes.
+See [flux-usernetes](https://github.com/converged-computing/flux-usernetes/tree/main/azure) for build and deploy instructions for deployment of user space Kubernetes.
 
 ### 4. Cleanup
 
@@ -297,7 +330,7 @@ Note that this current build does not have flux-pmix, which might lead to issues
 
 ### Info
 
-Here is various output about the environment, collected on December 29, 2024.
+Here is various output about the environment, collected on January 9, 2024.
 
 ```bash
 ucx_info -d
@@ -357,13 +390,13 @@ ucx_info -d
 #         memory types: host (access,reg_nonblock,reg,cache)
 #
 #      Transport: tcp
-#         Device: ib0
+#         Device: eth0
 #           Type: network
 #  System device: <unknown>
 #
 #      capabilities:
 #            bandwidth: 2200.00/ppn + 0.00 MB/sec
-#              latency: 5203 nsec
+#              latency: 5212 nsec
 #             overhead: 50000 nsec
 #            put_zcopy: <= 18446744073709551590, up to 6 iov
 #  put_opt_zcopy_align: <= 1
@@ -375,7 +408,7 @@ ucx_info -d
 #         am_align_mtu: <= 0
 #            am header: <= 8037
 #           connection: to ep, to iface
-#      device priority: 1
+#      device priority: 0
 #     device num paths: 1
 #              max eps: 256
 #       device address: 6 bytes
@@ -406,33 +439,6 @@ ucx_info -d
 #     device num paths: 1
 #              max eps: 256
 #       device address: 18 bytes
-#        iface address: 2 bytes
-#           ep address: 10 bytes
-#       error handling: peer failure, ep_check, keepalive
-#
-#      Transport: tcp
-#         Device: eth0
-#           Type: network
-#  System device: <unknown>
-#
-#      capabilities:
-#            bandwidth: 2200.00/ppn + 0.00 MB/sec
-#              latency: 5212 nsec
-#             overhead: 50000 nsec
-#            put_zcopy: <= 18446744073709551590, up to 6 iov
-#  put_opt_zcopy_align: <= 1
-#        put_align_mtu: <= 0
-#             am_short: <= 8K
-#             am_bcopy: <= 8K
-#             am_zcopy: <= 64K, up to 6 iov
-#   am_opt_zcopy_align: <= 1
-#         am_align_mtu: <= 0
-#            am header: <= 8037
-#           connection: to ep, to iface
-#      device priority: 0
-#     device num paths: 1
-#              max eps: 256
-#       device address: 6 bytes
 #        iface address: 2 bytes
 #           ep address: 10 bytes
 #       error handling: peer failure, ep_check, keepalive
@@ -484,7 +490,7 @@ ucx_info -d
 #
 # Memory domain: posix
 #     Component: posix
-#             allocate: <= 235268272K
+#             allocate: <= 235262556K
 #           remote key: 24 bytes
 #           rkey_ptr is supported
 #         memory types: host (access,alloc,cache)
@@ -523,18 +529,18 @@ ucx_info -d
 #       error handling: ep_check
 #
 #
-# Memory domain: mlx5_ib0
+# Memory domain: mlx5_0
 #     Component: ib
-#             register: unlimited, dmabuf, cost: 180 nsec
+#             register: unlimited, dmabuf, cost: 16000 + 0.060 * N nsec
 #           remote key: 8 bytes
 #           local memory handle is required for zcopy
 #           memory invalidation is supported
 #         memory types: host (access,reg,cache)
 #
 #      Transport: dc_mlx5
-#         Device: mlx5_ib0:1
+#         Device: mlx5_0:1
 #           Type: network
-#  System device: mlx5_ib0 (0)
+#  System device: mlx5_0 (0)
 #
 #      capabilities:
 #            bandwidth: 23588.47/ppn + 0.00 MB/sec
@@ -576,9 +582,9 @@ ucx_info -d
 #
 #
 #      Transport: rc_verbs
-#         Device: mlx5_ib0:1
+#         Device: mlx5_0:1
 #           Type: network
-#  System device: mlx5_ib0 (0)
+#  System device: mlx5_0 (0)
 #
 #      capabilities:
 #            bandwidth: 23588.47/ppn + 0.00 MB/sec
@@ -613,9 +619,9 @@ ucx_info -d
 #
 #
 #      Transport: rc_mlx5
-#         Device: mlx5_ib0:1
+#         Device: mlx5_0:1
 #           Type: network
-#  System device: mlx5_ib0 (0)
+#  System device: mlx5_0 (0)
 #
 #      capabilities:
 #            bandwidth: 23588.47/ppn + 0.00 MB/sec
@@ -657,9 +663,9 @@ ucx_info -d
 #
 #
 #      Transport: ud_verbs
-#         Device: mlx5_ib0:1
+#         Device: mlx5_0:1
 #           Type: network
-#  System device: mlx5_ib0 (0)
+#  System device: mlx5_0 (0)
 #
 #      capabilities:
 #            bandwidth: 23588.47/ppn + 0.00 MB/sec
@@ -682,9 +688,9 @@ ucx_info -d
 #
 #
 #      Transport: ud_mlx5
-#         Device: mlx5_ib0:1
+#         Device: mlx5_0:1
 #           Type: network
-#  System device: mlx5_ib0 (0)
+#  System device: mlx5_0 (0)
 #
 #      capabilities:
 #            bandwidth: 23588.47/ppn + 0.00 MB/sec
@@ -705,6 +711,15 @@ ucx_info -d
 #           ep address: 6 bytes
 #       error handling: peer failure, ep_check
 #
+#
+# Memory domain: mlx5_0
+#     Component: gga
+#             register: unlimited, dmabuf, cost: 16000 + 0.060 * N nsec
+#           remote key: 8 bytes
+#           local memory handle is required for zcopy
+#           memory invalidation is supported
+#         memory types: host (access,reg,cache)
+#   < no supported devices found >
 #
 # Connection manager: rdmacm
 #      max_conn_priv: 54 bytes
@@ -736,6 +751,36 @@ ucx_info -d
 #       device address: 8 bytes
 #        iface address: 4 bytes
 #       error handling: peer failure, ep_check
+#
+#
+# Memory domain: knem
+#     Component: knem
+#             register: unlimited, cost: 1200 + 0.007 * N nsec
+#           remote key: 16 bytes
+#         memory types: host (access,reg,cache)
+#
+#      Transport: knem
+#         Device: memory
+#           Type: intra-node
+#  System device: <unknown>
+#
+#      capabilities:
+#            bandwidth: 0.00/ppn + 13862.00 MB/sec
+#              latency: 80 nsec
+#             overhead: 2000 nsec
+#            put_zcopy: unlimited, up to 16 iov
+#  put_opt_zcopy_align: <= 1
+#        put_align_mtu: <= 1
+#            get_zcopy: unlimited, up to 16 iov
+#  get_opt_zcopy_align: <= 1
+#        get_align_mtu: <= 1
+#           connection: to iface
+#      device priority: 0
+#     device num paths: 1
+#              max eps: inf
+#       device address: 8 bytes
+#        iface address: 0 bytes
+#       error handling: none
 #
 ```
 
@@ -770,11 +815,11 @@ Device info:
 
 ```console
 $ ibv_devinfo 
-hca_id: mlx5_ib0
+hca_id: mlx5_0
         transport:                      InfiniBand (0)
         fw_ver:                         20.31.1014
-        node_guid:                      0015:5dff:fe33:ff2b
-        sys_image_guid:                 946d:ae03:0045:397a
+        node_guid:                      0015:5dff:fe33:ff23
+        sys_image_guid:                 946d:ae03:0068:a6ba
         vendor_id:                      0x02c9
         vendor_part_id:                 4124
         hw_ver:                         0x0
@@ -785,7 +830,7 @@ hca_id: mlx5_ib0
                         max_mtu:                4096 (5)
                         active_mtu:             4096 (5)
                         sm_lid:                 1
-                        port_lid:               674
+                        port_lid:               677
                         port_lmc:               0x00
                         link_layer:             InfiniBand
 ```
@@ -793,7 +838,7 @@ hca_id: mlx5_ib0
 $ ibv_devices 
     device                 node GUID
     ------              ----------------
-    mlx5_ib0            00155dfffe33ff2b
+    mlx5_0              00155dfffe33ff23
 ```
 
 More devices...
@@ -801,11 +846,11 @@ More devices...
 ```console
 $ flux exec -r 0-1 lspci
 0101:00:00.0 Infiniband controller: Mellanox Technologies MT28908 Family [ConnectX-6 Virtual Function]
-01e1:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
-1e7f:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
+254f:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
+cf71:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
 0101:00:00.0 Infiniband controller: Mellanox Technologies MT28908 Family [ConnectX-6 Virtual Function]
-5e51:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
-7718:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
+5132:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
+759e:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
 ```
 
 And networking.
@@ -815,35 +860,33 @@ $ ip link
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
-    link/ether 00:22:48:aa:35:d1 brd ff:ff:ff:ff:ff:ff
-3: ib0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 2044 qdisc mq state UP mode DEFAULT group default qlen 256
-    link/infiniband 00:00:01:48:fe:80:00:00:00:00:00:00:00:15:5d:ff:fd:33:ff:2b brd 00:ff:ff:ff:ff:12:40:1b:80:08:00:00:00:00:00:00:ff:ff:ff:ff
+    link/ether 7c:1e:52:11:5d:01 brd ff:ff:ff:ff:ff:ff
+3: ibP257s63109: <BROADCAST,MULTICAST> mtu 4092 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/infiniband 00:00:01:48:fe:80:00:00:00:00:00:00:00:15:5d:ff:fd:33:ff:23 brd 00:ff:ff:ff:ff:12:40:1b:80:2a:00:00:00:00:00:00:ff:ff:ff:ff
     altname ibP257p0s0
-    altname ibP257s63111
 ```
 
 Some software:
 
 ```console
 $ which mpirun
-/opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/ompi/bin/mpirun
+/usr/local/bin/mpirun
 ```
 ```console
 $ mpirun --version
-mpirun (Open MPI) 4.1.5rc2
-Report bugs to http://www.open-mpi.org/community/help/
+mpirun (Open MPI) 4.1.2
 ```
 ```console
 $ gcc --version
-gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
-Copyright (C) 2021 Free Software Foundation, Inc.
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ```
 
 ### Docker
 
-For advanced users, we have a [docker](docker) directory with builds that emulate the base set of VMs that are intended to be used with them. It would be good if Microsoft wanted to provide more production bases for us :)
+For advanced users, we have a [docker](docker) directory with builds that are the exact same logic, built into containers! You can use the base containers for your own applications. 
 
 ### Debugging
 

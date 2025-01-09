@@ -31,8 +31,7 @@ variable "image_resource_group_name" {
   default = env("AZURE_RESOURCE_GROUP_NAME")
 }
 
-# az vm image list --publisher microsoft-dsvm --offer ubuntu-hpc --output table --all
-# x64             ubuntu-hpc  microsoft-dsvm  2204-preview-ndv5  microsoft-dsvm:ubuntu-hpc:2204-preview-ndv5:22.04.2023080201  22.04.2023080201
+# az vm image list
 source "azure-arm" "builder" {
 
   # Uncomment if you aren't using managed identity (in cloud shell)
@@ -40,11 +39,11 @@ source "azure-arm" "builder" {
   # client_secret                     = var.client_secret
   # And comment this line (or set to false)
   use_azure_cli_auth                = true
-  image_offer                       = "ubuntu-hpc"
-  image_publisher                   = "microsoft-dsvm"
-  image_sku                         = "2204-preview-ndv5"
+  image_offer                       = "ubuntu-24_04-lts"
+  image_publisher                   = "Canonical"
+  image_sku                         = "server"
   location                          = "southcentralus"
-  managed_image_name                = "flux-framework"
+  managed_image_name                = "flux-framework-2404"
   managed_image_resource_group_name = var.image_resource_group_name
   os_type                           = "Linux"
   subscription_id                   = var.subscription_id
@@ -55,6 +54,7 @@ source "azure-arm" "builder" {
   ssh_username                      = "azureuser"
   azure_tags = {
     "flux" : "0.68.0",
+    "flux-sched": "0.40.0"
   }
 }
 
