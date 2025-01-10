@@ -4,7 +4,7 @@ Note that I needed to do this build from a cloud shell, so clone and then:
 
 ```bash
 git clone https://github.com/converged-computing/flux-tutorials
-flux-tutorials/tutorial/azure/build
+cd flux-tutorials/tutorial/azure/build
 ```
 
 And install packer

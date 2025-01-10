@@ -4,28 +4,63 @@ set -euo pipefail
 
 ################################################################
 #
-# Flux, Singularity, and Infiniband dependenciess
+# Flux, Singularity, and Infiniband dependencies
+# Starting on ubuntu 24.04
 #
 
-/usr/bin/cloud-init status --wait
+# In practice I haven't seen needing this
+# /usr/bin/cloud-init status --wait
 
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update && \
-    sudo apt-get install -y apt-transport-https ca-certificates curl jq apt-utils wget \
-         libelf-dev libpcap-dev libbfd-dev binutils-dev build-essential make \
-         linux-tools-common linux-tools-$(uname -r)  \
-         python3-pip git net-tools
+    sudo apt-get install -y apt-transport-https ca-certificates curl jq apt-utils wget curl jq \
+         build-essential make linux-tools-common linux-tools-$(uname -r)
 
-# Microsoft packages for 24.04
-# curl https://packages.microsoft.com/config/ubuntu/24.04/prod.list > ./microsoft-prod.list
-# sudo cp ./microsoft-prod.list /etc/apt/sources.list.d/
+# Install ORAS client
+VERSION="1.2.2"
+curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+mkdir -p oras-install/
+tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
+sudo mv oras-install/oras /usr/local/bin/
+rm -rf oras_${VERSION}_*.tar.gz oras-install/
 
-# Install the Microsoft GPG public key
-# Note I'm commenting this out - I don't see any microsoft packages I want / need
-# curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-# sudo cp ./microsoft.gpg /etc/apt/trusted.gpg.d/
-# sudo cp ./microsoft.gpg /usr/share/keyrings/microsoft-prod.gpg
-# gpg --refresh-keys
+# Infiniband
+# make sure secure boot is disabled 
+# mokutil --sb-state
+sudo chown -R azureuser /opt
+
+# https://docs.nvidia.com/networking/display/mlnxofedv24101140lts/installing+the+driver#src-3411296587_InstallingtheDriver-InstallationScript
+# check we have devices 
+# lspci -v | grep Mellanox
+cd /opt
+oras pull ghcr.io/converged-computing/rdma-infiniband:ubuntu-24.04-tgz
+tar -xzvf MLNX_OFED_LINUX-24.10-1.1.4.0-ubuntu24.04-x86_64.tgz
+touch MLNX_OFED_LINUX-24.10-1.1.4.0-ubuntu24.04-x86_64.txt
+mv MLNX_OFED_LINUX-24.10-1.1.4.0-ubuntu24.04-x86_64 mlnx
+rm MLNX_OFED_LINUX-24.10-1.1.4.0-ubuntu24.04-x86_64.tgz 
+cd mlnx
+sudo ./mlnxofedinstall --force
+sudo /etc/init.d/openibd restart
+
+# Rename device to ib0
+cd /opt
+wget https://raw.githubusercontent.com/converged-computing/aks-infiniband-install/main/ubuntu22.04/parse-links.py
+sudo python3 parse-links.py
+ip link
+
+cd /opt
+wget https://github.com/openucx/ucx/releases/download/v1.17.0/ucx-1.17.0.tar.gz && \
+    tar -xzvf ucx-1.17.0.tar.gz && \
+    cd ucx-1.17.0 && \
+    ./configure --disable-logging --disable-debug --disable-assertions --disable-params-check --enable-mt --prefix=/usr --enable-examples --without-java --without-go --without-xpmem --without-cuda --with-rc --with-ud --with-dc \
+    --with-mlx5-dv --with-verbs --with-ib-hw-tm --with-dm --with-devx && \
+    make -j && sudo make install && sudo ldconfig
+
+wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.2.tar.gz && \
+    tar -xzvf openmpi-4.1.2.tar.gz && \
+    cd openmpi-4.1.2 && \
+    ./configure --with-ucx=/usr && \
+    make -j && sudo make install && sudo ldconfig
 
 # cmake is needed for flux-sched, and make sure to choose arm or x86
 export CMAKE=3.23.1
@@ -45,55 +80,18 @@ curl -s -L https://github.com/Kitware/CMake/releases/download/v$CMAKE/cmake-$CMA
          libboost-graph-dev libboost-system-dev libboost-filesystem-dev \
          libboost-regex-dev libyaml-cpp-dev libedit-dev uidmap dbus-user-session python3-cffi
 
-# Azure hpc-images deps added here - not clear if all of these are needed
-# sudo apt-get install -y numactl rpm libnuma-dev libmpc-dev libmpfr-dev libxml2-dev m4 byacc \
-#         libnl-3-dev libnl-route-3-dev libnl-3-200 libnl-genl-3-dev libnl-genl-3-200 libnl-route-3-200 bison \
-#         libsecret-1-0 dkms libyaml-dev libreadline-dev libkeyutils1 libkeyutils-dev libmount-dev nfs-common pssh \
-#         libvulkan1 hwloc selinux-policy-dev nvme-cli # vulkan is for nvidia gpu driver
-
-sudo ldconfig
-# Other Microsoft helpers
-# Not installing:
-# azcopy
-# kvp client
-# torset-tool
-# lustre
-
-# First manual test build 12/26/2024
-# $ lspci
-# 0101:00:00.0 Infiniband controller: Mellanox Technologies MT28908 Family [ConnectX-6 Virtual Function]
-# 3532:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
-# 78a8:00:00.0 Non-Volatile memory controller: Microsoft Corporation Device b111
-# cc4c:00:02.0 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx Virtual Function] (rev 80)
-
-# https://docs.nvidia.com/doca/archive/2-8-0/nvidia+doca+installation+guide+for+linux/index.html
-# wget https://developer.nvidia.com/downloads/networking/secure/doca-sdk/DOCA_2.8/doca-host_2.8.0-204000-24.07-ubuntu2404_amd64.deb
-# sudo dpkg -i doca-host_2.8.0-204000-24.07-ubuntu2404_amd64.deb
-# rm doca-host_2.8.0-204000-24.07-ubuntu2404_amd64.deb
-
-#  ofed_info -s
-# MLNX_OFED_LINUX-23.04-1.1.3.0
-
-# Install ORAS client
-VERSION="1.2.2"
-curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
-mkdir -p oras-install/
-tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
-sudo mv oras-install/oras /usr/local/bin/
-rm -rf oras_${VERSION}_*.tar.gz oras-install/
-
 # /etc/init.d/openibd status
-#   HCA driver loaded
+#  HCA driver loaded
 
 # Configured IPoIB devices:
 # ib0
 
 # Currently active IPoIB devices:
 # Configured Mellanox EN devices:
-# eth1
+# enP54485s1
 
 # Currently active Mellanox devices:
-# eth1
+# enP54485s1
 # ib0
 
 # The following OFED modules are loaded:
@@ -108,41 +106,33 @@ rm -rf oras_${VERSION}_*.tar.gz oras-install/
 #   ib_cm
 #   ib_core
 #   mlxfw
-sudo locale-gen en_US.UTF-8
 
-# HPC-x (MPI)
-# Located at 
-. /opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/hpcx-mt-init.sh
-hpcx_load
-env | grep HPCX
+sudo locale-gen en_US.UTF-8
 
 ################################################################
 ## Install Flux and dependencies
 
-# QUESTION: Do we still need this given packages above?
-# sudo chown -R $(whoami) /opt && \
-#    mkdir -p /opt/prrte && \
-#    cd /opt/prrte && \
-#    git clone https://github.com/openpmix/openpmix.git && \
-#    git clone https://github.com/openpmix/prrte.git && \
-#    cd openpmix && \
-#    git checkout fefaed568f33bf86f28afb6e45237f1ec5e4de93 && \
-#    ./autogen.pl && \
-#    ./configure --prefix=/usr --disable-static && sudo make install && \
-#    sudo ldconfig
+mkdir -p /opt/prrte && \
+    cd /opt/prrte && \
+    git clone https://github.com/openpmix/openpmix.git && \
+    git clone https://github.com/openpmix/prrte.git && \
+    cd openpmix && \
+    git checkout fefaed568f33bf86f28afb6e45237f1ec5e4de93 && \
+    ./autogen.pl && \
+    ./configure --prefix=/usr --disable-static && sudo make install && \
+    sudo ldconfig
 
-# cd /opt/prrte/prrte && \
-#    git checkout 477894f4720d822b15cab56eee7665107832921c && \
-#    ./autogen.pl && \
-#    ./configure --prefix=/usr && sudo make -j install
+cd /opt/prrte/prrte && \
+    git checkout 477894f4720d822b15cab56eee7665107832921c && \
+    ./autogen.pl && \
+    ./configure --prefix=/usr && sudo make -j install
 
 # flux security
-sudo mkdir -p /opt/flux
-sudo chown -R $(whoami) /opt/flux
+cd /opt
 wget https://github.com/flux-framework/flux-security/releases/download/v0.13.0/flux-security-0.13.0.tar.gz && \
     tar -xzvf flux-security-0.13.0.tar.gz && \
-    mv flux-security-0.13.0 /opt/flux/flux-security && \
-    cd /opt/flux/flux-security && \
+    mv flux-security-0.13.0 /opt/flux-security && \
+    cd /opt/flux-security && \
     ./configure --prefix=/usr --sysconfdir=/etc && \
     make -j && sudo make install
 
@@ -154,34 +144,35 @@ sudo mkdir -p /var/run/munge && \
     sudo chmod 600 /etc/munge/munge.key
 
 # Make the flux run directory
-ls /home
-whoami
-sudo mkdir -p /home/azureuser/run/flux
-sudo chown azureuser /home/azureuser
+mkdir -p /home/azureuser/run/flux
 
 # Flux core
+sudo apt-get install -y python3-pip
+cd /opt
 wget https://github.com/flux-framework/flux-core/releases/download/v0.68.0/flux-core-0.68.0.tar.gz && \
     tar -xzvf flux-core-0.68.0.tar.gz && \
-    mv flux-core-0.68.0 /opt/flux/flux-core && \
-    cd /opt/flux/flux-core && \
+    mv flux-core-0.68.0 /opt/flux-core && \
+    cd /opt/flux-core && \
     ./configure --prefix=/usr --sysconfdir=/etc --with-flux-security && \
     make clean && \
     make -j && sudo make install
 
 # Flux pmix (must be installed after flux core)
-# wget https://github.com/flux-framework/flux-pmix/releases/download/v0.5.0/flux-pmix-0.5.0.tar.gz && \
-#     tar -xzvf flux-pmix-0.5.0.tar.gz && \
-#     mv flux-pmix-0.5.0 /opt/flux/flux-pmix && \
-#     cd /opt/flux/flux-pmix && \
-#     ./configure --prefix=/usr && \
-#     make -j && \
-#     sudo make install
+cd /opt
+wget https://github.com/flux-framework/flux-pmix/releases/download/v0.5.0/flux-pmix-0.5.0.tar.gz && \
+     tar -xzvf flux-pmix-0.5.0.tar.gz && \
+     mv flux-pmix-0.5.0 /opt/flux-pmix && \
+     cd /opt/flux-pmix && \
+     ./configure --prefix=/usr && \
+     make -j && \
+     sudo make install
 
-# Flux sched (later than this requires newer gcc and clang)
-wget https://github.com/flux-framework/flux-sched/releases/download/v0.37.0/flux-sched-0.37.0.tar.gz && \
-    tar -xzvf flux-sched-0.37.0.tar.gz && \
-    mv flux-sched-0.37.0 /opt/flux/flux-sched && \
-    cd /opt/flux/flux-sched && \
+# Flux sched
+cd /opt
+wget https://github.com/flux-framework/flux-sched/releases/download/v0.40.0/flux-sched-0.40.0.tar.gz && \
+    tar -xzvf flux-sched-0.40.0.tar.gz && \
+    mv flux-sched-0.40.0 /opt/flux-sched && \
+    cd /opt/flux-sched && \
     mkdir build && \
     cd build && \
     cmake ../ && make -j && sudo make install && sudo ldconfig && \
@@ -201,9 +192,7 @@ flux keygen /tmp/curve.cert && \
     # /var/lib/flux needs to be owned by the instance owner
     sudo mkdir -p /var/lib/flux && \
     sudo chown azureuser -R /var/lib/flux && \
-    # clean up (and make space)
     cd /opt
-    sudo rm -rf /opt/flux
 
 # Install Singularity
 # flux start mpirun -n 6 singularity exec singularity-mpi_mpich.sif /opt/mpitest
@@ -249,23 +238,23 @@ export VERSION=4.0.1 && \
  make -C builddir && \
  sudo make -C builddir install
 
-/usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync
-
 # Ensure the flux uri is exported for all users
 # The build should be done as azureuser, but don't assume it.
 export FLUX_URI=local:///opt/run/flux/local
 echo "export FLUX_URI=local:///opt/run/flux/local" >> /home/$(whoami)/.bashrc
 echo "export FLUX_URI=local:///opt/run/flux/local" >> /home/azureuser/.bashrc
 
-# Ensure we source the environment.
-echo ". /opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/hpcx-mt-init.sh" >> /home/$(whoami)/.bashrc
-echo ". /opt/hpcx-v2.15-gcc-MLNX_OFED_LINUX-5-ubuntu22.04-cuda12-gdrcopy2-nccl2.17-x86_64/hpcx-mt-init.sh" >> /home/azureuser/.bashrc
-echo "hpcx_load" >> /home/$(whoami)/.bashrc
-echo "hpcx_load" >> /home/azureuser/.bashrc
-
 # The flux uri needs to be set for all users that logic
 echo "FLUX_URI        DEFAULT=local:///opt/run/flux/local" >> ./environment
 sudo mv ./environment /etc/security/pam_env.conf
 
+# https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+sudo sysctl -p
+sudo systemctl daemon-reload
 # 
 # At this point we have what we need!
+
+/usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync

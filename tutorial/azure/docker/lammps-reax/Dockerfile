@@ -1,13 +1,11 @@
-FROM ghcr.io/converged-computing/flux-tutorials:azurehpc-2204
+FROM ghcr.io/converged-computing/flux-tutorials:azure-2404-base
 
 # Build command
-# docker build -t ghcr.io/converged-computing/flux-tutorials:azurehpc-2204-lammps-reax .
-# docker push ghcr.io/converged-computing/metric-osu-cpu:azure-hpc-lammps-reax
+# docker build -t ghcr.io/converged-computing/flux-tutorials:azure-2404-lammps-reax .
 # lmp -v x 2 -v y 2 -v z 2 -in in.reaxff.hns -nocite
 
 WORKDIR /opt/lammps
-RUN . /source-hpcx.sh && hpcx_load && \
-    git init && \
+RUN git init && \
     git remote add origin https://github.com/lammps/lammps.git && \
     git fetch --depth 1 origin a8687b53724b630fb5f454c8d7be9f9370f8bb3b && \
     git checkout FETCH_HEAD && \
