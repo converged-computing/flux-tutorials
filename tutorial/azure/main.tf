@@ -61,10 +61,6 @@ locals {
   # This will be newly created
   resource_group_name = "terraform-testing"
 
-  # Custom Build variables (the packer build)
-  vm_image_name           = "flux-framework"
-  vm_image_resource_group = "packer-testing"
-
   # This is also called the SKU
   vm_image_size = "Standard_HB120-96rs_v3"
   location      = "southcentralus"
@@ -101,15 +97,6 @@ resource "azurerm_subnet" "vmss" {
   resource_group_name  = azurerm_resource_group.vmss.name
   virtual_network_name = azurerm_virtual_network.vmss.name
   address_prefixes     = ["10.0.2.0/24"]
-}
-
-data "azurerm_resource_group" "image" {
-  name = local.vm_image_resource_group
-}
-
-data "azurerm_image" "image" {
-  name                = local.vm_image_name
-  resource_group_name = data.azurerm_resource_group.image.name
 }
 
 resource "azapi_resource" "ssh_public_key" {
