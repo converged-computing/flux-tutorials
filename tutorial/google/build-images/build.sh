@@ -221,5 +221,24 @@ export VERSION=4.0.1 && \
 # Along with the /etc/flux/system/R
 sudo mkdir -p /etc/flux/system
 
+# Memory / file limits
+cat <<EOF | tee /tmp/memory
+*	soft	nproc	unlimited
+*	hard	nproc	unlimited
+*	soft	memlock	unlimited
+*	hard	memlock	unlimited
+*	soft	stack	unlimited
+*	hard	stack	unlimited
+*	soft	nofile	unlimited
+*	hard	nofile	unlimited
+*	soft	cpu	unlimited
+*	hard	cpu	unlimited
+*	soft	rtprio	unlimited
+*	hard	rtprio	unlimited
+EOF
+
+sudo cp /tmp/memory /etc/security/limits.d/98-google-hpc-image.conf
+sudo cp /tmp/memory /etc/security/limits.conf
+
 # 
 # At this point we have what we need!

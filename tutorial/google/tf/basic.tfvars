@@ -3,13 +3,14 @@ compute_node_specs = [
   {
     name_prefix  = "flux"
     machine_arch = "x86-64"
-    machine_type = "c2d-standard-112"
-    gpu_type     = null
-    gpu_count    = 0
-    compact      = false
-    instances    = 2
-    properties   = []
-    boot_script  = <<BOOT_SCRIPT
+    machine_type = "c2d-standard-16"
+    # machine_type = "c2d-standard-112"
+    gpu_type    = null
+    gpu_count   = 0
+    compact     = false
+    instances   = 2
+    properties  = []
+    boot_script = <<BOOT_SCRIPT
 #!/bin/sh
 
 # This is already built into the image
@@ -33,6 +34,16 @@ sudo chown $fluxuser /etc/flux/system/R
 sudo mkdir -p /run/flux
 mkdir -p /opt/run/flux
 sudo chown -R flux /run/flux /opt/run/flux
+
+# Write imp toml configuration
+
+cat <<EOF | tee /tmp/imp.toml
+# Only allow access to the IMP exec method by the 'flux' user.
+# Only allow the installed version of flux-shell(1) to be executed.
+[exec]
+allowed-users = [ "flux" ]
+allowed-shells = [ "/usr/libexec/flux/flux-shell" ]
+EOF
 
 # Write updated broker.toml
 cat <<EOF | tee /tmp/broker.toml
@@ -77,8 +88,9 @@ hosts = [
 tcp_user_timeout = "2m"
 EOF
 
-sudo mkdir -p /etc/flux/system/conf.d /etc/flux/system/cron.d
+sudo mkdir -p /etc/flux/system/conf.d /etc/flux/system/cron.d /etc/flux/imp/conf.d
 sudo mv /tmp/broker.toml /etc/flux/system/conf.d/broker.toml
+sudo mv /tmp/imp.toml /etc/flux/imp/conf.d/imp.toml
 
 # Write new service file
 cat <<EOF | tee /tmp/flux.service
@@ -108,6 +120,7 @@ ExecStart=/bin/bash -c '/usr/bin/flux broker \
 SyslogIdentifier=flux
 ExecReload=/usr/bin/flux config reload
 LimitMEMLOCK=infinity
+LimitNOFILE=infinity
 TasksMax=infinity
 LimitNPROC=infinity
 Restart=always
