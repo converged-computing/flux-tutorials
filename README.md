@@ -2,6 +2,8 @@
 
 > A Dinosaur Tutorial Series! 
 
+[![DOI](https://zenodo.org/badge/887571291.svg)](https://doi.org/10.5281/zenodo.15253172)
+
 ## Tutorials
 
 - [flux-in-slurm](tutorial/flux-in-slurm): Bring up a Flux instance (in user-space) in a Slurm Allocation - both in Kubernetes ([video](https://youtu.be/8ZkSLV0m7To?si=WqWKCe2jvRuTXvlJ)) 
