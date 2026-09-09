@@ -2,21 +2,21 @@
 # VARIABLES # for you to edit!
 
 locals {
-  name   = "flux"
-  pwd    = basename(path.cwd)
-  region = "us-east-1"
-  ami    = "ami-0cde5522ea4938246"
+  name      = "flux"
+  pwd       = basename(path.cwd)
+  region    = "us-east-1"
+  ami       = "ami-0878bc7ca48087dfb"
   placement = "eks-efa-testing"
 
   instance_type = "hpc7g.16xlarge"
   vpc_cidr      = "10.0.0.0/16"
-  key_name      = "dinosaur-rsa"
+  key_name      = "ed-the-dinosaur"
 
   # hpc7a has this weirdo
-  ethernet_device = "enp34s0"
+  ethernet_device = "ens5"
 
-  # Must be larger than ami (30)
-  volume_size = 100
+  # Must be larger than ami (200)
+  volume_size = 210
 
   # Set autoscaling to consistent size so we don't scale for now
   min_size     = 2
@@ -26,7 +26,7 @@ locals {
   # We might want to delete a
   cidr_block_a = "10.0.1.0/24"
   cidr_block_b = "10.0.2.0/24"
-  cidr_block_c = "10.0.3.0/24"
+  # cidr_block_c = "10.0.3.0/24"
 
   # "0.0.0.0/0" allows from anywhere - update
   # this to be just your ip / collaborators
@@ -76,7 +76,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-
 resource "aws_subnet" "public_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = local.cidr_block_b
@@ -90,16 +89,16 @@ resource "aws_subnet" "public_b" {
   }
 }
 
-resource "aws_subnet" "public_c" {
+resource "aws_subnet" "public_a" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = local.cidr_block_c
-  availability_zone = "${local.region}c"
+  cidr_block        = local.cidr_block_a
+  availability_zone = "${local.region}a"
 
   enable_resource_name_dns_a_record_on_launch = true
   private_dns_hostname_type_on_launch         = "resource-name"
 
   tags = {
-    Name = "${local.name}-subnet-public-c"
+    Name = "${local.name}-subnet-public-a"
   }
 }
 
@@ -129,8 +128,8 @@ resource "aws_route_table_association" "b" {
   route_table_id = aws_route_table.public_route_table.id
 }
 
-resource "aws_route_table_association" "c" {
-  subnet_id      = aws_subnet.public_c.id
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public_route_table.id
 }
 
@@ -166,7 +165,7 @@ resource "aws_security_group" "security_group" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [local.cidr_block_a, local.cidr_block_b, local.cidr_block_c]
+    cidr_blocks = [local.cidr_block_a, local.cidr_block_b]
   }
 
   # This could be scoped better to internal instances
@@ -185,7 +184,7 @@ resource "aws_security_group" "security_group" {
     protocol    = "tcp"
     cidr_blocks = ["${chomp(data.http.address.response_body)}/32"]
   }
-  
+
   ingress {
     cidr_blocks = ["0.0.0.0/0"]
     protocol    = "icmp"
@@ -212,7 +211,7 @@ resource "aws_lb" "load_balancer" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.security_group.id]
-  subnets            = [aws_subnet.public_b.id, aws_subnet.public_c.id]
+  subnets            = [aws_subnet.public_b.id, aws_subnet.public_a.id]
 }
 
 resource "aws_lb_listener" "load_balance_listener" {
@@ -336,7 +335,7 @@ resource "aws_autoscaling_group" "autoscaling_group" {
   # Make this really large so we don't check soon :)
   desired_capacity    = local.desired_size
   target_group_arns   = [aws_lb_target_group.target_group.arn]
-  vpc_zone_identifier = [aws_subnet.public_b.id]
+  vpc_zone_identifier = [aws_subnet.public_a.id]
   # default_cooldown is unset
 
   # These could also be selected based on the asg, e.g.,
