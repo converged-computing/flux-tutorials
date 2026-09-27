@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Great Flux Pizza Dash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crust:#8A5A3B; --tomato:#C0392B; --tomato-d:#9E2E23; --cheese:#C68A1E; --cheese-l:#F2D58A;
+    --basil:#3F7F34; --card:#FFFFFF; --ink:#2E2019; --mute:#7C6B5E; --line:#E8D6BE; --bg:#FBF3E6;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:"Golos Text","Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .topbar{height:8px;background:linear-gradient(90deg,var(--tomato),var(--cheese),var(--basil))}
+  .wrap{max-width:1500px;margin:0 auto;padding:14px 24px 40px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:700}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.4;cursor:default}
+  .hidden{display:none !important}
+
+  .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .title{font-size:28px;font-weight:800;color:var(--tomato);letter-spacing:-.3px;margin:0}
+  .sub{font-size:13px;color:var(--mute);font-weight:600;margin-top:2px}
+  .hbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .tabbtn{padding:9px 16px;background:#fff;border:1px solid var(--line);color:var(--mute);font-size:14px}
+  .tabbtn.on{background:var(--tomato);border-color:var(--tomato);color:#fff}
+  .ctl{padding:9px 16px;background:#fff;border:1px solid var(--line);color:var(--ink);font-size:14px}
+  .ctl.exit{color:var(--tomato-d)}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:0 6px 20px rgba(138,90,59,.08)}
+  h3{margin:0 0 10px;color:var(--tomato);font-size:16px}
+
+  /* setup */
+  .setup{display:grid;grid-template-columns:minmax(320px,460px) 1fr;gap:22px;align-items:start}
+  @media(max-width:880px){.setup{grid-template-columns:1fr}}
+  .teamrow{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .swatch{width:32px;height:32px;border-radius:8px;flex:none;border:2px solid rgba(0,0,0,.08);cursor:pointer}
+  .teamrow input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:15px;min-width:0}
+  .rm{width:34px;height:34px;background:#F5E7D4;color:var(--crust);font-size:16px;flex:none}
+  .add{padding:9px 14px;background:#F5E7D4;color:var(--crust);font-size:14px;margin-top:4px}
+  .opts{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+  .opt{padding:9px 14px;background:#F5E7D4;color:var(--crust);font-size:14px}
+  .opt.on{background:var(--tomato);color:#fff}
+  .hint{font-size:12.5px;color:var(--mute);margin:4px 0 0}
+  .start{margin-top:18px;background:var(--basil);color:#fff;font-size:17px;padding:12px 26px}
+  .rules{font-size:15px;line-height:1.55;color:#4c3a2d}
+  .rules ul{margin:0;padding-left:20px}
+  .rules li{margin:5px 0}
+
+  /* game layout */
+  .game{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+  @media(max-width:1050px){.game{grid-template-columns:1fr}}
+  .board{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+  .tile{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:12px;min-height:104px;padding:7px 7px 6px;display:flex;flex-direction:column}
+  .tile .n{font-size:12px;font-weight:800;color:#C9B193}
+  .tile .lab{font-size:12px;font-weight:700;color:#5b4636;line-height:1.15;margin-top:2px}
+  .tile .ic{font-size:18px;line-height:1;margin-top:2px}
+  .tile.ms{background:#FFF8EC}
+  .tile.start{background:#F3E6D2;border-color:#DCC4A0}
+  .tile.finish{background:#FCE3A6;border-color:#D9A93A}
+  .tile.haz{background:#FBE3DF;border-color:#E9A79D}
+  .tile.haz .lab{color:var(--tomato-d)}
+  .tile.cur{box-shadow:0 0 0 3px rgba(192,57,43,.35)}
+  .toks{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:4px}
+  .tok{width:38px;height:38px;border-radius:50%;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+  .toks.many .tok{width:28px;height:28px;font-size:11px;border-width:2px}
+  .tok.active{outline:3px solid var(--ink);outline-offset:1px}
+  .tok.moved{animation:pop .6s ease}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+
+  /* side */
+  .turn{border-radius:16px;padding:16px 18px;color:#fff;margin-bottom:14px}
+  .turn .who{font-size:24px;font-weight:800;line-height:1.15}
+  .turn .where{font-size:13.5px;opacity:.9;margin-top:4px;font-weight:600}
+  .diffs{display:flex;flex-direction:column;gap:8px}
+  .diffs button{padding:13px 14px;font-size:16px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+  .d1{background:var(--basil)}.d2{background:var(--tomato)}.d3{background:var(--crust)}
+  .diffs .pts{font-size:13px;background:rgba(255,255,255,.22);padding:2px 9px;border-radius:20px}
+  .keys{font-size:12px;color:var(--mute);margin-top:8px}
+  .stand{margin-top:14px}
+  .srow{display:grid;grid-template-columns:30px 1fr auto;gap:8px 10px;align-items:center;padding:8px 10px;border-radius:10px;border:1.5px solid transparent}
+  .srow.on{border-color:var(--tomato);background:#FFF6EE}
+  .sdot{width:30px;height:30px;border-radius:50%;color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .snm{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spos{font-size:13px;color:var(--mute);font-weight:700}
+  .sbar{grid-column:2 / 4;height:9px;background:#F1E3D0;border-radius:6px;overflow:hidden;margin-top:-4px}
+  .sbar div{height:100%;border-radius:6px;transition:width .4s}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(46,32,25,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .card{background:#fff;border-radius:18px;max-width:720px;width:100%;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .qmeta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+  .cat{font-size:13px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--tomato)}
+  .badge{font-size:12px;font-weight:800;color:#fff;padding:4px 12px;border-radius:20px}
+  .timer{font-size:15px;font-weight:800;color:var(--mute);min-width:44px;text-align:right}
+  .timer.low{color:var(--tomato)}
+  .for{font-size:14px;font-weight:700;margin-bottom:6px}
+  .qtext{font-size:25px;font-weight:700;line-height:1.3;margin:4px 0 18px}
+  .qtext code,.ans code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background:#F5E7D4;padding:1px 6px;border-radius:5px}
+  .ans{background:#FBEFDD;border-left:5px solid var(--tomato);border-radius:10px;padding:12px 16px;font-size:19px;font-weight:700;color:var(--tomato-d);margin-bottom:16px}
+  .ans small{display:block;font-size:12px;font-weight:800;text-transform:uppercase;color:var(--mute);letter-spacing:.4px;margin-bottom:3px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row button{padding:13px 20px;font-size:15px;flex:1;min-width:130px}
+  .show{background:var(--cheese);color:#fff}.ok{background:var(--basil);color:#fff}.no{background:var(--tomato);color:#fff}
+  .gray{background:#EFE3D3;color:var(--ink)}
+  .steal{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+  .steal .lbl{font-size:13px;color:var(--mute);font-weight:700;margin-bottom:8px}
+  .steal .row button{flex:0 1 auto;min-width:0;color:#fff;font-size:14px;padding:10px 14px}
+  .confirm p{font-size:17px;margin:0 0 18px}
+  .win{text-align:center}
+  .win h2{font-size:32px;margin:6px 0 16px}
+  .confetti{position:fixed;top:-12px;width:9px;height:14px;border-radius:2px;z-index:60;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(680deg)}}
+  .toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);color:#fff;padding:12px 22px;border-radius:30px;font-weight:700;z-index:70;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:16px}
+
+  /* jokes & Q&A */
+  .jbtns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .jbtns button{padding:13px 20px;font-size:15px;color:#fff}
+  .jj{background:var(--cheese)}.jq{background:var(--basil)}.ja{background:var(--tomato)}
+  .stage{min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:40px 34px}
+  .stage .k{font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--tomato);margin-bottom:14px}
+  .stage .big{font-size:30px;font-weight:800;line-height:1.3;max-width:900px}
+  .stage .punch{font-size:28px;font-weight:800;color:var(--basil);margin-top:18px;max-width:900px}
+  .stage .act{margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .stage .act button{padding:11px 20px;font-size:15px;color:#fff}
+  .askbox{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:680px}
+  .askbox input{flex:1;min-width:260px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:16px}
+  .groans{text-align:center;margin-top:14px;font-weight:700;color:var(--mute);font-size:14px}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1 class="title">The Great Flux Pizza Dash</h1>
+      <div class="sub">Flux Tutorial · HPCIC 2026</div>
+    </div>
+    <div class="hbtns">
+      <button class="tabbtn on" id="tabGame" onclick="setTab('game')">Pizza Dash</button>
+      <button class="tabbtn" id="tabJokes" onclick="setTab('jokes')">Jokes &amp; Q&amp;A</button>
+      <button class="ctl hidden" id="btnNew" onclick="askNewGame()">New game</button>
+      <button class="ctl exit hidden" id="btnExit" onclick="askExit()">Exit</button>
+    </div>
+  </div>
+
+  <!-- GAME TAB -->
+  <div id="gameTab">
+    <div id="setupView" class="setup">
+      <div class="panel">
+        <h3>Teams</h3>
+        <div id="teamList"></div>
+        <button class="add" onclick="addTeam()">+ Add team</button>
+        <h3 style="margin-top:20px">Track length</h3>
+        <div class="opts" id="lenOpts"></div>
+        <button class="start" onclick="startGame()">Start game</button>
+      </div>
+      <div class="panel rules">
+        <h3>How to play</h3>
+        <ul>
+          <li>On your turn, choose a difficulty. <b>Thin slice</b> moves 1 space, <b>Deep dish</b> 2, <b>The Works</b> 3.</li>
+          <li>The host reads the question. Your team gets one answer. The timer is a guide; the host decides when time is up.</li>
+          <li>Correct: move forward. Wrong: stay put, and any other team can steal for 1 space.</li>
+          <li>Red tiles are hazards. Land on one and you move back.</li>
+          <li>The first team to reach the last tile wins.</li>
+        </ul>
+        <h3 style="margin-top:18px">Host keys</h3>
+        <ul>
+          <li><b>1 / 2 / 3</b> choose difficulty</li>
+          <li><b>Space</b> show answer, then <b>C</b> correct or <b>W</b> wrong</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="playView" class="game hidden">
+      <div class="board" id="board"></div>
+      <div>
+        <div class="turn" id="turnBox"></div>
+        <div class="panel">
+          <h3>Difficulty</h3>
+          <div class="diffs">
+            <button class="d1" onclick="draw(1)">Thin slice<span class="pts">+1</span></button>
+            <button class="d2" onclick="draw(2)">Deep dish<span class="pts">+2</span></button>
+            <button class="d3" onclick="draw(3)">The Works<span class="pts">+3</span></button>
+          </div>
+          <div class="keys">Keys 1, 2, 3</div>
+          <div class="stand" id="standings"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOKES TAB -->
+  <div id="jokesTab" class="hidden">
+    <div class="jbtns">
+      <button class="jj" onclick="tellJoke()">Joke</button>
+      <button class="jq" onclick="qaPrompt()">Discussion question</button>
+      <button class="ja" onclick="askRoom()">Audience question</button>
+    </div>
+    <div class="stage" id="stage"><div style="color:var(--mute);font-size:18px">Choose an option above.</div></div>
+    <div class="groans" id="groans"></div>
+  </div>
+</div>
+<div id="modal"></div>
+
+<script>
+/* ---------- config ---------- */
+var PALETTE=["#C0392B","#1F6FB2","#2E8B57","#B9770E","#7D3C98","#117A8B","#6E4B2A","#D35400","#34495E","#C2185B","#5D6D0E","#4A4FB3"];
+var DEFAULT_NAMES=["Mozzarella","Sausage","Giardiniera","Pepperoni","Mushroom","Onion","Basil","Oregano"];
+var LENGTHS=[{n:"Short",t:24},{n:"Standard",t:32},{n:"Long",t:40}];
+var MILESTONES=[["🧈","Butter the pan"],["🫓","Press the dough"],["🧀","Mozzarella"],["🌭","Sausage"],["🫑","Peppers"],["🌶️","Giardiniera"],["🍅","Tomato sauce"],["🧀","Parmesan"],["🔥","Into the oven"],["⏲️","Bake"],["🔪","Slice"]];
+var HAZARDS=[["Burnt crust",2],["Node failure",3],["Dropped slice",2],["Job preempted",3],["Oven outage",2]];
+var TURN_SECONDS=45;
+
+/* ---------- questions (d = spaces moved) ---------- */
+var BANK=[
+ /* Thin slice */
+ {d:1,c:"Flux commands",q:"Which command launches a job and waits for it to finish, streaming its output to your terminal?",a:"flux run"},
+ {d:1,c:"Flux commands",q:"Which command gives you an interactive shell inside a new Flux instance on newly allocated resources?",a:"flux alloc"},
+ {d:1,c:"Flux commands",q:"Which command submits a script to run as its own Flux instance and returns immediately with a job ID?",a:"flux batch"},
+ {d:1,c:"Flux commands",q:"You submitted a job by mistake. Which command stops it?",a:"flux cancel"},
+ {d:1,c:"Flux commands",q:"By default <code>flux jobs</code> hides jobs that have finished. Which option shows them?",a:"<code>-a</code>"},
+ {d:1,c:"Flux commands",q:"Which command shows how many nodes and cores are free, allocated, or down?",a:"flux resource list"},
+ {d:1,c:"Flux basics",q:"Flux job IDs are usually printed starting with a special character. Which one?",a:"ƒ (f with a hook). A plain lowercase f also works when typing."},
+ {d:1,c:"Flux basics",q:"What is the name of the graph-based scheduler in flux-sched?",a:"Fluxion"},
+ {d:1,c:"Flux basics",q:"In a batch script, what text at the start of a line marks it as a submission directive?",a:"<code># flux:</code> (FLUX: also accepted)"},
+ {d:1,c:"Kubernetes",q:"The Flux Operator adds a custom resource to Kubernetes for running Flux. What is it called?",a:"MiniCluster"},
+ {d:1,c:"Exascale",q:"An exaflop is 10 to what power floating-point operations per second?",a:"18"},
+ {d:1,c:"Exascale",q:"Which benchmark is used to rank the Top500?",a:"HPL (High-Performance LINPACK)"},
+ {d:1,c:"Exascale",q:"Which DOE lab in the Chicago suburbs hosts the Aurora supercomputer?",a:"Argonne National Laboratory"},
+ {d:1,c:"HPSF",q:"The High Performance Software Foundation is part of which larger organization?",a:"The Linux Foundation"},
+ {d:1,c:"Chicago",q:"Which restaurant claims to have invented deep dish in 1943?",a:"Pizzeria Uno"},
+ {d:1,c:"Chicago",q:"Chicago tavern-style thin crust is cut into what shape?",a:"Squares (a party cut)"},
+ {d:1,c:"Chicago",q:"Besides Argonne, which DOE national laboratory is in the Chicago area?",a:"Fermilab"},
+
+ /* Deep dish */
+ {d:2,c:"Flux commands",q:"<code>flux run -N2 -n8 -c4 ./app</code>: how many cores does the job use in total?",a:"32 (8 tasks × 4 cores each)"},
+ {d:2,c:"Flux commands",q:"<code>flux run -n6 -c2 -g1 ./app</code>: how many GPUs does the job request?",a:"6 (one per task)"},
+ {d:2,c:"Flux commands",q:"What does <code>-c</code> set on <code>flux run</code>, and what is its default?",a:"Cores per task. Default 1."},
+ {d:2,c:"Flux commands",q:"Which command changes the time limit of a job that is already pending or running?",a:"flux update"},
+ {d:2,c:"Flux commands",q:"Which command takes a node out of service so no new work lands on it?",a:"flux resource drain"},
+ {d:2,c:"Flux commands",q:"You used flux submit. Which command shows the job's output live, or after it has finished?",a:"flux job attach (flux watch also works)"},
+ {d:2,c:"Flux commands",q:"Which command prints the IDs of jobs whose names match an expression?",a:"flux pgrep"},
+ {d:2,c:"Flux commands",q:"Which command displays running jobs as a tree, showing nested Flux instances?",a:"flux pstree"},
+ {d:2,c:"Flux internals",q:"Job IDs are FLUIDs. What does FLUID stand for?",a:"Flux Locally Unique ID"},
+ {d:2,c:"Flux internals",q:"Flux brokers are connected by a TBON. What does TBON stand for?",a:"Tree-Based Overlay Network"},
+ {d:2,c:"Flux internals",q:"Which broker rank is the root of the overlay network?",a:"Rank 0"},
+ {d:2,c:"Flux internals",q:"What is Fluxion's default queuing policy?",a:"fcfs (first come, first served)"},
+ {d:2,c:"Flux internals",q:"Which scheduler ships inside flux-core itself, for when Fluxion is not loaded?",a:"sched-simple"},
+ {d:2,c:"Exascale",q:"Name the two other US exascale systems besides El Capitan.",a:"Frontier (Oak Ridge) and Aurora (Argonne)"},
+ {d:2,c:"Exascale",q:"Which system was the first to officially pass one exaflop on HPL?",a:"Frontier"},
+ {d:2,c:"Exascale",q:"Which AMD accelerator model powers El Capitan?",a:"AMD Instinct MI300A"},
+ {d:2,c:"Exascale",q:"Which vendor made the GPUs in Aurora?",a:"Intel"},
+ {d:2,c:"Exascale",q:"The Top500 is published twice a year. At which two conferences?",a:"ISC (June) and SC (November)"},
+ {d:2,c:"HPSF",q:"Name two HPSF projects other than Flux.",a:"Any two of: Spack, Kokkos, AMReX, WarpX, Trilinos, Apptainer, Charliecloud, E4S, HPCToolkit, HPX, OpenCHAMI, Viskores"},
+ {d:2,c:"Chicago",q:"In 1955 a sister restaurant to Pizzeria Uno opened a block away. What is its name?",a:"Pizzeria Due"},
+ {d:2,c:"Chicago",q:"How is Chicago stuffed pizza built differently from deep dish?",a:"A second thin layer of dough goes on top, with sauce over it"},
+
+ /* The Works */
+ {d:3,c:"Flux internals",q:"Name all seven Flux job states in order.",a:"NEW, DEPEND, PRIORITY, SCHED, RUN, CLEANUP, INACTIVE"},
+ {d:3,c:"Flux internals",q:"Which job state comes directly after RUN?",a:"CLEANUP"},
+ {d:3,c:"Flux internals",q:"What is Fluxion's default resource match policy?",a:"first (take the first match and stop searching)"},
+ {d:3,c:"Flux internals",q:"Name three Fluxion match policies other than the default.",a:"Any three of: low, high, lonode, hinode, lonodex, hinodex, firstnodex"},
+ {d:3,c:"Flux internals",q:"Name the three backfilling queue policies in Fluxion.",a:"easy, conservative, hybrid"},
+ {d:3,c:"Flux internals",q:"How does EASY backfilling differ from conservative backfilling in Fluxion?",a:"EASY only protects the start time of the top pending job. Conservative protects every pending job with higher priority."},
+ {d:3,c:"Flux internals",q:"Which Fluxion setting controls how many higher-priority jobs the hybrid policy protects?",a:"reservation-depth (policy-params)"},
+ {d:3,c:"Flux internals",q:"Fluxion's default format for allocated resource sets can describe only three resource types. Which three?",a:"Nodes, cores, and GPUs (rv1_nosched)"},
+ {d:3,c:"Flux commands",q:"You run <code>flux run -N4 hostname</code> with no task count. How many tasks run, and how are the nodes allocated?",a:"4 tasks, one per node, and the nodes are allocated exclusively"},
+ {d:3,c:"Flux RFCs",q:"Which Flux RFC number defines the resource set (R) format?",a:"RFC 20"},
+ {d:3,c:"Flux RFCs",q:"Which Flux RFC number defines batch script submission directives?",a:"RFC 36"},
+ {d:3,c:"Flux RFCs",q:"Which Flux RFC number defines the job state machine?",a:"RFC 21"},
+ {d:3,c:"Flux trivia",q:"The flux-core built-in scheduler was recently rewritten. In what language?",a:"Python"},
+ {d:3,c:"Flux trivia",q:"<code>flux fortune</code> has hidden categories. Name two, other than all.",a:"Any two of: valentines, fun, facts, art"},
+ {d:3,c:"Exascale",q:"Rank the three US exascale systems by HPL score, highest first.",a:"El Capitan, Frontier, Aurora"},
+ {d:3,c:"Chicago",q:"A 1956 Chicago Daily News article credited a chef, not the owners, with the first deep dish recipe. Who?",a:"Rudy Malnati Sr. (father of Lou Malnati)"}
+];
+
+/* ---------- state ---------- */
+var setupTeams=[], lenIdx=1, state=null, timerId=null;
+
+function initSetup(){
+  setupTeams=[0,1].map(function(i){return {name:DEFAULT_NAMES[i],color:PALETTE[i]};});
+  renderSetup();
+}
+function nextColor(){
+  var used=setupTeams.map(function(t){return t.color;});
+  for(var i=0;i<PALETTE.length;i++) if(used.indexOf(PALETTE[i])<0) return PALETTE[i];
+  return "hsl("+Math.floor(Math.random()*360)+",55%,38%)";
+}
+function addTeam(){
+  var n=setupTeams.length;
+  setupTeams.push({name:DEFAULT_NAMES[n]||("Team "+(n+1)),color:nextColor()});
+  renderSetup();
+}
+function removeTeam(i){ if(setupTeams.length>2){ setupTeams.splice(i,1); renderSetup(); } }
+function cycleColor(i){
+  var cur=PALETTE.indexOf(setupTeams[i].color);
+  setupTeams[i].color=PALETTE[(cur+1)%PALETTE.length];
+  renderSetup();
+}
+function renderSetup(){
+  var el=document.getElementById('teamList'); el.innerHTML='';
+  setupTeams.forEach(function(t,i){
+    var r=document.createElement('div'); r.className='teamrow';
+    r.innerHTML='<div class="swatch" title="Change color" style="background:'+t.color+'" onclick="cycleColor('+i+')"></div>'+
+      '<input maxlength="24" value="'+esc(t.name)+'" oninput="setupTeams['+i+'].name=this.value">'+
+      '<button class="rm" title="Remove team" onclick="removeTeam('+i+')"'+(setupTeams.length<=2?' disabled':'')+'>✕</button>';
+    el.appendChild(r);
+  });
+  var lo=document.getElementById('lenOpts'); lo.innerHTML='';
+  LENGTHS.forEach(function(L,i){
+    var b=document.createElement('button'); b.className='opt'+(i===lenIdx?' on':'');
+    b.textContent=L.n+' ('+(L.t-1)+' spaces)'; b.onclick=function(){lenIdx=i;renderSetup();};
+    lo.appendChild(b);
+  });
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+/* ---------- board ---------- */
+function buildTrack(total){
+  var tiles=[]; for(var i=0;i<total;i++) tiles.push({kind:'plain'});
+  tiles[0]={kind:'start',ic:'📋',lab:'Start'};
+  tiles[total-1]={kind:'finish',ic:'😋',lab:'Finish'};
+  var hz=[0.18,0.36,0.52,0.68,0.84];
+  hz.forEach(function(f,k){
+    var p=Math.round(f*(total-1)); var h=HAZARDS[k%HAZARDS.length];
+    tiles[p]={kind:'haz',lab:h[0],back:h[1]};
+  });
+  var free=[]; for(var j=1;j<total-1;j++) if(tiles[j].kind==='plain') free.push(j);
+  MILESTONES.forEach(function(m,k){
+    var idx=free[Math.round((k+0.5)*free.length/MILESTONES.length)];
+    if(idx!==undefined&&tiles[idx].kind==='plain') tiles[idx]={kind:'ms',ic:m[0],lab:m[1]};
+  });
+  return tiles;
+}
+function abbrevs(teams){
+  var out=teams.map(function(t){
+    var w=t.name.trim().split(/\s+/).filter(Boolean);
+    if(w.length>1) return (w[0][0]+w[1][0]).toUpperCase();
+    return (w[0]||'?').slice(0,2).replace(/^./,function(c){return c.toUpperCase();});
+  });
+  out.forEach(function(a,i){ if(out.indexOf(a)!==i) out[i]=a.slice(0,1)+(i+1); });
+  return out;
+}
+
+/* ---------- game flow ---------- */
+function startGame(){
+  var teams=setupTeams.map(function(t,i){return {name:t.name.trim()||("Team "+(i+1)),color:t.color,pos:0};});
+  var ab=abbrevs(teams); teams.forEach(function(t,i){t.ab=ab[i];});
+  state={teams:teams,turn:0,used:[],moved:-1,tiles:buildTrack(LENGTHS[lenIdx].t)};
+  showPlay(true); render();
+}
+function showPlay(on){
+  document.getElementById('setupView').classList.toggle('hidden',on);
+  document.getElementById('playView').classList.toggle('hidden',!on);
+  document.getElementById('btnNew').classList.toggle('hidden',!on);
+  document.getElementById('btnExit').classList.toggle('hidden',!on);
+}
+function askNewGame(){
+  confirmBox('Restart with the same teams? Scores will be reset.','Restart',function(){
+    stopTimer();
+    state.teams.forEach(function(t){t.pos=0;});
+    state.turn=0; state.used=[]; state.moved=-1; state.tiles=buildTrack(state.tiles.length);
+    render();
+  });
+}
+function askExit(){
+  confirmBox('Exit this game and return to setup?','Exit',function(){
+    stopTimer(); state=null; showPlay(false); renderSetup();
+  });
+}
+function render(){
+  var tiles=state.tiles, cols=8, b=document.getElementById('board'); b.innerHTML='';
+  var cur=state.teams[state.turn];
+  tiles.forEach(function(t,idx){
+    var row=Math.floor(idx/cols), col=(row%2===0)?(idx%cols):(cols-1-(idx%cols));
+    var d=document.createElement('div');
+    var cls='tile'+(t.kind!=='plain'?' '+t.kind:'')+(cur.pos===idx?' cur':'');
+    d.className=cls; d.style.gridColumn=col+1; d.style.gridRow=row+1;
+    var here=state.teams.filter(function(tm){return tm.pos===idx;});
+    var toks=here.map(function(tm){
+      var ti=state.teams.indexOf(tm);
+      return '<div class="tok'+(ti===state.turn?' active':'')+(ti===state.moved?' moved':'')+'" style="background:'+tm.color+'" title="'+esc(tm.name)+'">'+esc(tm.ab)+'</div>';
+    }).join('');
+    var body='';
+    if(t.kind==='haz') body='<div class="lab">'+t.lab+'<br>Back '+t.back+'</div>';
+    else if(t.lab) body='<div class="ic">'+t.ic+'</div><div class="lab">'+t.lab+'</div>';
+    d.innerHTML='<div class="n">'+idx+'</div>'+body+'<div class="toks'+(here.length>3?' many':'')+'">'+toks+'</div>';
+    b.appendChild(d);
+  });
+  var goal=tiles.length-1;
+  var tb=document.getElementById('turnBox');
+  tb.style.background=cur.color;
+  tb.innerHTML='<div class="who">'+esc(cur.name)+'</div><div class="where">Your turn · space '+cur.pos+' of '+goal+'</div>';
+  var s=document.getElementById('standings'); s.innerHTML='';
+  state.teams.forEach(function(tm,i){
+    var r=document.createElement('div'); r.className='srow'+(i===state.turn?' on':'');
+    r.innerHTML='<div class="sdot" style="background:'+tm.color+'">'+esc(tm.ab)+'</div>'+
+      '<div class="snm">'+esc(tm.name)+'</div><div class="spos">'+tm.pos+' / '+goal+'</div>'+
+      '<div class="sbar"><div style="width:'+(100*tm.pos/goal)+'%;background:'+tm.color+'"></div></div>';
+    s.appendChild(r);
+  });
+}
+function draw(diff){
+  if(!state||document.getElementById('modal').innerHTML) return;
+  var pool=[];
+  BANK.forEach(function(q,i){ if(q.d===diff&&state.used.indexOf(i)<0) pool.push(i); });
+  if(!pool.length){
+    state.used=state.used.filter(function(i){return BANK[i].d!==diff;});
+    BANK.forEach(function(q,i){ if(q.d===diff) pool.push(i); });
+  }
+  var qi=pool[Math.floor(Math.random()*pool.length)];
+  state.used.push(qi); state.q={qi:qi,diff:diff};
+  var q=BANK[qi], cur=state.teams[state.turn];
+  var dc=diff===1?'var(--basil)':diff===2?'var(--tomato)':'var(--crust)';
+  var dn=diff===1?'Thin slice +1':diff===2?'Deep dish +2':'The Works +3';
+  document.getElementById('modal').innerHTML='<div class="overlay"><div class="card">'+
+    '<div class="qmeta"><span class="cat">'+q.c+'</span><span style="display:flex;gap:10px;align-items:center">'+
+    '<span class="badge" style="background:'+dc+'">'+dn+'</span><span class="timer" id="timer"></span></span></div>'+
+    '<div class="for" style="color:'+cur.color+'">'+esc(cur.name)+'</div>'+
+    '<div class="qtext">'+q.q+'</div>'+
+    '<div id="ansBox" class="hidden"><div class="ans"><small>Answer</small>'+q.a+'</div></div>'+
+    '<div class="row" id="qbtns"><button class="show" onclick="reveal()">Show answer</button></div>'+
+    '<div id="stealBox"></div></div></div>';
+  startTimer();
+}
+function startTimer(){
+  stopTimer(); var left=TURN_SECONDS, el=document.getElementById('timer');
+  var tick=function(){ if(!el) return; el.textContent=left+'s'; el.classList.toggle('low',left<=10); if(left>0) left--; else stopTimer(); };
+  tick(); timerId=setInterval(tick,1000);
+}
+function stopTimer(){ if(timerId){clearInterval(timerId);timerId=null;} }
+function reveal(){
+  stopTimer();
+  document.getElementById('ansBox').classList.remove('hidden');
+  document.getElementById('qbtns').innerHTML='<button class="ok" onclick="judge(true)">Correct (+'+state.q.diff+')</button>'+
+    '<button class="no" onclick="judge(false)">Wrong</button>';
+}
+function judge(ok){
+  if(ok){ closeModal(); move(state.turn,state.q.diff); if(!checkWin()) nextTurn(); return; }
+  var others=state.teams.map(function(t,i){return i;}).filter(function(i){return i!==state.turn;});
+  document.getElementById('qbtns').innerHTML='';
+  document.getElementById('stealBox').innerHTML='<div class="steal"><div class="lbl">Steal for +1</div><div class="row">'+
+    others.map(function(i){return '<button style="background:'+state.teams[i].color+'" onclick="steal('+i+')">'+esc(state.teams[i].name)+'</button>';}).join('')+
+    '<button class="gray" style="color:var(--ink)" onclick="closeModal();nextTurn();">No steal</button></div></div>';
+}
+function steal(i){ closeModal(); move(i,1); if(!checkWin()) nextTurn(); }
+function move(ti,steps){
+  var tm=state.teams[ti], goal=state.tiles.length-1;
+  tm.pos=Math.min(goal,tm.pos+steps);
+  var t=state.tiles[tm.pos];
+  if(t.kind==='haz'){ tm.pos=Math.max(0,tm.pos-t.back); toast(tm.name+': '+t.lab.toLowerCase()+', back '+t.back,'var(--tomato-d)'); }
+  state.moved=ti; render();
+}
+function checkWin(){
+  var goal=state.tiles.length-1;
+  for(var i=0;i<state.teams.length;i++) if(state.teams[i].pos>=goal){ win(state.teams[i]); return true; }
+  return false;
+}
+function nextTurn(){ state.turn=(state.turn+1)%state.teams.length; render(); state.moved=-1; }
+function closeModal(){ stopTimer(); document.getElementById('modal').innerHTML=''; }
+
+function confirmBox(msg,label,onOk){
+  document.getElementById('modal').innerHTML='<div class="overlay"><div class="card confirm" style="max-width:460px">'+
+    '<p>'+msg+'</p><div class="row"><button class="gray" id="cCancel">Cancel</button>'+
+    '<button class="no" id="cOk">'+label+'</button></div></div></div>';
+  document.getElementById('cCancel').onclick=function(){ document.getElementById('modal').innerHTML=''; };
+  document.getElementById('cOk').onclick=function(){ document.getElementById('modal').innerHTML=''; onOk(); };
+}
+function win(team){
+  confetti(team.color);
+  document.getElementById('modal').innerHTML='<div class="overlay"><div class="card win">'+
+    '<div style="font-size:60px">🍕</div><h2 style="color:'+team.color+'">'+esc(team.name)+' wins</h2>'+
+    '<div class="row"><button class="show" onclick="playAgain()">Play again</button>'+
+    '<button class="gray" onclick="exitNow()">Exit</button></div></div></div>';
+}
+function playAgain(){
+  document.getElementById('modal').innerHTML='';
+  state.teams.forEach(function(t){t.pos=0;}); state.turn=0; state.used=[]; state.moved=-1;
+  state.tiles=buildTrack(state.tiles.length); render();
+}
+function exitNow(){ document.getElementById('modal').innerHTML=''; state=null; showPlay(false); renderSetup(); }
+function toast(msg,bg){
+  var t=document.createElement('div'); t.className='toast'; t.textContent=msg; t.style.background=bg||'var(--crust)';
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.transition='opacity .5s';t.style.opacity='0';},2200);
+  setTimeout(function(){t.remove();},2800);
+}
+function confetti(color){
+  var cs=[color,'#C0392B','#F2D58A','#3F7F34','#8A5A3B'];
+  for(var i=0;i<120;i++){
+    var c=document.createElement('div'); c.className='confetti';
+    c.style.left=Math.random()*100+'vw'; c.style.background=cs[i%cs.length];
+    c.style.animationDuration=(2.2+Math.random()*1.8)+'s'; c.style.animationDelay=(Math.random()*.6)+'s';
+    document.body.appendChild(c); (function(el){setTimeout(function(){el.remove();},4800);})(c);
+  }
+}
+
+/* ---------- tabs ---------- */
+function setTab(t){
+  var g=t==='game';
+  document.getElementById('gameTab').classList.toggle('hidden',!g);
+  document.getElementById('jokesTab').classList.toggle('hidden',g);
+  document.getElementById('tabGame').classList.toggle('on',g);
+  document.getElementById('tabJokes').classList.toggle('on',!g);
+  var inGame=g&&!!state;
+  document.getElementById('btnNew').classList.toggle('hidden',!inGame);
+  document.getElementById('btnExit').classList.toggle('hidden',!inGame);
+}
+
+/* ---------- jokes & Q&A ---------- */
+var JOKES=[
+  {s:"Why can't you put anchovies on an exascale pizza?",p:"They already have too many scales."},
+  {s:"What's the MPI call for serving pizza?",p:"MPI_Scatter. For the leftovers, MPI_Gather."},
+  {s:"Why did the qubit skip lunch?",p:"It was in a superposition of hungry and full."},
+  {s:"What did the node say right before it failed?",p:"Nothing. That was the problem."},
+  {s:"Why did the job sit in the queue all week?",p:"It asked for the whole machine."},
+  {s:"How do you order an exascale pizza?",p:"One slice, followed by eighteen zeros."},
+  {s:"Why do Chicagoans appreciate a good scheduler?",p:"Deep dish takes 45 minutes. You learn to plan ahead."},
+  {s:"Why did the batch job get killed?",p:"It went over its time limit. Much like this joke."},
+  {s:"What's a supercomputer's favorite pizza?",p:"Deep dish. It has the most layers of abstraction."},
+  {s:"There are 10 kinds of people in HPC.",p:"Those who understand binary, and those who don't."}
+];
+var PROMPTS=[
+  "What is the biggest problem you hit running at scale?",
+  "How do you debug a job across thousands of nodes?",
+  "Does your workflow move between laptop, cloud, and HPC? Where does it break?",
+  "Where do you lose the most time: queue wait, data movement, or failures?",
+  "Are you using cloud resources alongside HPC? What has worked?",
+  "Do you expect quantum to show up in your work? When?",
+  "How do you handle node failures in long-running jobs?",
+  "What was hardest when you first started using a scheduler?",
+  "How do you move and store data at this scale?",
+  "What is one thing you would change about your current scheduler?",
+  "What would you need to try Flux on your own system?",
+  "How do you trade off portability against performance?"
+];
+var jUsed=[],pUsed=[],groans=0;
+function pick(arr,used){ if(used.length>=arr.length) used.length=0; var i; do{i=Math.floor(Math.random()*arr.length);}while(used.indexOf(i)>=0); used.push(i); return arr[i]; }
+function tellJoke(){
+  var j=pick(JOKES,jUsed); window._joke=j;
+  document.getElementById('stage').innerHTML='<div class="k">Joke</div><div class="big">'+j.s+'</div>'+
+    '<div class="act"><button class="jj" onclick="punch()">Punchline</button></div>';
+}
+function punch(){
+  var j=window._joke;
+  document.getElementById('stage').innerHTML='<div class="k">Joke</div><div class="big">'+j.s+'</div><div class="punch">'+j.p+'</div>'+
+    '<div class="act"><button class="ja" onclick="groan()">Groan</button><button class="jj" onclick="tellJoke()">Next joke</button></div>';
+}
+function groan(){ groans++; document.getElementById('groans').textContent=groans+(groans===1?' groan':' groans'); }
+function qaPrompt(){
+  document.getElementById('stage').innerHTML='<div class="k">Discussion</div><div class="big">'+pick(PROMPTS,pUsed)+'</div>'+
+    '<div class="act"><button class="jq" onclick="qaPrompt()">Next question</button></div>';
+}
+function askRoom(){
+  document.getElementById('stage').innerHTML='<div class="k">Audience question</div><div class="askbox">'+
+    '<input id="askIn" placeholder="Type a question" onkeydown="if(event.key===\'Enter\')showAsk()"><button class="ja" onclick="showAsk()" style="color:#fff;padding:12px 18px">Show</button></div>';
+  setTimeout(function(){var e=document.getElementById('askIn'); if(e) e.focus();},30);
+}
+function showAsk(){
+  var v=document.getElementById('askIn').value.trim(); if(!v) return;
+  document.getElementById('stage').innerHTML='<div class="k">Audience question</div><div class="big">'+esc(v)+'</div>'+
+    '<div class="act"><button class="ja" onclick="askRoom()">Next</button></div>';
+}
+
+/* ---------- keys ---------- */
+document.addEventListener('keydown',function(e){
+  if(e.target&&e.target.tagName==='INPUT') return;
+  if(!state||document.getElementById('gameTab').classList.contains('hidden')) return;
+  var ans=document.getElementById('ansBox');
+  if(ans){
+    if(e.key===' '&&ans.classList.contains('hidden')){ e.preventDefault(); reveal(); }
+    else if(!ans.classList.contains('hidden')&&document.getElementById('qbtns').innerHTML){
+      if(e.key==='c'||e.key==='C') judge(true);
+      else if(e.key==='w'||e.key==='W') judge(false);
+    }
+    return;
+  }
+  if(document.getElementById('modal').innerHTML) return;
+  if(e.key==='1') draw(1); else if(e.key==='2') draw(2); else if(e.key==='3') draw(3);
+});
+
+initSetup();
+</script>
+</body>
+</html>
