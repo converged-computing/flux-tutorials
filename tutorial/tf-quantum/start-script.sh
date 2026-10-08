@@ -164,7 +164,7 @@ sudo ldconfig
 
 # flux-quantum branch and qrmi
 rm -rf /opt/flux-quantum
-sudo git clone --depth 1 -b qrmi https://github.com/converged-computing/flux-quantum /opt/flux-quantum
+sudo git clone --depth 1 -b braket-hybrid https://github.com/converged-computing/flux-quantum /opt/flux-quantum
 chown -R ubuntu:ubuntu /opt/flux-quantum
 ln -sfn /opt/flux-quantum/examples/qrmi/ibm-run.sh /usr/local/bin/ibm-run
 
@@ -195,7 +195,7 @@ queue-policy = "coschedule"
 # unprotected jobs to make room, and a cancelled job loses its work.
 [job-manager]
 plugins = [
-{ load = "/etc/flux/system/jobtap/quantum.so", conf = { vendors = "ibm,braket,mock", protect_types = "qpu", total_cores = $TOTAL_CORES, reserve_cores = 0, preempt_after = 5 } }
+{ load = "/etc/flux/system/jobtap/quantum.so", conf = { vendors = "ibm,braket,mock,ionq", protect_types = "qpu", total_cores = $TOTAL_CORES, reserve_cores = 0, preempt_after = 5 } }
 ]
 EOF
 sudo mv /tmp/coschedule.toml /etc/flux/system/conf.d/coschedule.toml
@@ -216,7 +216,7 @@ flux config get sched-fluxion-qmanager.queue-policy 2>/dev/null \
     || echo "WARNING could not read back the queue policy"
 
 echo "=== add vendor devices to the graph, before any job runs ==="
-flux python -m flux_quantum.populate ibm braket mock \
+flux python -m flux_quantum.populate ibm braket mock ionq --qpus 4 \
     || echo "WARNING populate failed, the first quantum submit will be refused"
 
 # Just sanity check we own everything still
